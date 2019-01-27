@@ -1,0 +1,5 @@
+#is_str
+main:
+  const r0, "hello"
+  is_str r1, r0
+  ret r1

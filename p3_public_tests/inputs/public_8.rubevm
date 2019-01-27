@@ -1,0 +1,19 @@
+# factorial
+main:
+  const r0, 6
+  const r1, fact
+  call r1, 0, 0
+  ret r0
+
+fact:
+  const r1, 1
+  const r5, fact
+  leq r2, r0, r1
+  sub r2, r2, r1
+  if_zero r2, 4
+  mov r2, r0
+  sub r0, r0, r1
+  call r5, 0, 0
+  mul r1, r2, r0
+  ret r1
+  

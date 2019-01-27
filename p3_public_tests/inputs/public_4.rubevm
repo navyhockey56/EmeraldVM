@@ -1,0 +1,6 @@
+# leq
+main:
+	const r0, 1
+	const r1, 2
+	leq r0, r1, r0
+	ret r0

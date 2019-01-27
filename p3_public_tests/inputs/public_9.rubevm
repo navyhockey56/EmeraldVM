@@ -1,0 +1,5 @@
+#is_int
+main:
+  const r0, 90
+  is_int r1, r0
+  ret r1

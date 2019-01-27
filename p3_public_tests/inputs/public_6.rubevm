@@ -1,0 +1,6 @@
+# wr / rd global
+main:
+	const r0, 100
+	wr_glob x, r0
+	rd_glob r1, x
+	ret r1

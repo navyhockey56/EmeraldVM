@@ -1,0 +1,6 @@
+# Storing a constant 
+main:
+	const r0, print_string
+	const r1, "test string"
+	call r0, 1, 1
+	ret r0

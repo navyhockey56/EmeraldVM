@@ -1,0 +1,5 @@
+main:
+  const r0, "Error"
+  halt r0
+  is_int r1, r0
+  ret r1

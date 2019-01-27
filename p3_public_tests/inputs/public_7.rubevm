@@ -1,0 +1,8 @@
+# Table
+main:
+	mk_tab r0
+	const r1, "It was a pleasure to burn."
+	const r2, 451
+	wr_tab r0, r1, r2
+	rd_tab r3, r0, r1
+	ret r3

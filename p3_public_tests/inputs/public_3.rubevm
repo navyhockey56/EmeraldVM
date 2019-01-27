@@ -1,0 +1,6 @@
+# Division
+main:
+	const r0, 3
+	const r1, 5
+	div r0, r1, r0
+	ret r0

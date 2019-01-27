@@ -1,0 +1,6 @@
+# Add 2 numbers
+main:
+	const r0, 10
+	const r1, 20
+	add r3, r0, r1
+	ret r3
