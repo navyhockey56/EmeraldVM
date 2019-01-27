@@ -1,6 +1,6 @@
 (* Do not change this file! *)
 
-open Rubevm
+open Emeraldvm
 
 let main () =
   let input_file = ref "" in
@@ -15,7 +15,7 @@ let main () =
     let _ = List.iter (fun (f, is) -> Hashtbl.add p' f (Array.of_list is)) p in
     let _ = close_in chan in
     (*    Disassembler.disassemble p'; *)
-    match Rubevm.run_prog p' with
+    match Emeraldvm.run_prog p' with
     | `Halt v -> Printf.printf "halt: %a\n" Disassembler.value v
     | `Reg v -> Printf.printf "%a\n" Disassembler.value v
   else
