@@ -15,7 +15,7 @@ number_passed = 0
 		output_file = "outputs/#{test_name}.out"
 		
 		passed = (expected_output = File.read(output_file)) == output
-		message = "Expected:\n#{expected_output}\nBut output was:\n#{output}" unless passed
+		message = "Expected:\n#{[expected_output]}\nBut output was:\n#{[output]}" unless passed
 		print_test_result test_name, passed, message
 		number_passed += 1 if passed
 	else
