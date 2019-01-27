@@ -1,7 +1,7 @@
 main:
   mk_tab r0
   
-  const r1, "It was a pleasure to burn."
+  const r1, "Gar"
   const r2, 1
   wr_tab r0, r1, r2
   
