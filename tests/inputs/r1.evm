@@ -25,14 +25,25 @@ main:
 # r2 - input 
 foo:
   const r3, to_s
-  call r3, 0, 0
 
+  call r3, 0, 0
   call r3, 1, 1
   call r3, 2, 2
+
+  const r4, "Key: "
+  const r5, "Value: "
+  const r6, "Input: "
+  const r7, "\n"
 
   const r3, print_string
+  call r3, 4, 4
   call r3, 0, 0
+  call r3, 7, 7
+  call r3, 5, 5
   call r3, 1, 1
+  call r3, 7, 7
+  call r3, 6, 6
   call r3, 2, 2
+  call r3, 7, 7
 
   ret r0

@@ -347,9 +347,9 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
 	let instruction = current_inst program stack in 
 	(*
 	Printf.printf "\nInstruction:\t%a\n" Disassembler.dis_instr instruction;
-	Disassembler.print_stack stack;
-	print_string "Output: \n\t";
-	*)
+	Disassembler.print_stack stack; 
+	print_string "Output: \n\t"; 
+	*)	
 	match instruction with 
 	
 	(*
@@ -710,10 +710,6 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
  					let input = Hashtbl.find new_registers 2 in 
  					(* Add the function call to the stack for each key,value pair *)
 					let new_stack = iterate_key_val_pairs key_vals function_to_call input stack in
-					
-					(* Store the return value *)
-					let start_location = get_start_location instruction in  
-					Hashtbl.replace registers start_location (`L_Int 0);
  					(* Update the config *)
  					(heap, new_stack)
 
@@ -731,16 +727,11 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
 		match stack with 
 			| _::(prev_function_name, prev_program_counter, prev_registers)::tail -> 
 				let prev_function = (Hashtbl.find program prev_function_name) in 
-				let increment_pc_by = (
-					match prev_function_name with 
-						| ":iter" -> 1 
-						| _ -> 1
-				) in 
 				let prev_instruction = (Array.get prev_function prev_program_counter) in 
 				let start_location = get_start_location prev_instruction in 
 				let value = get_register_value registers r in 
 				Hashtbl.replace prev_registers start_location value;
-				let new_stack = (prev_function_name, prev_program_counter + increment_pc_by, prev_registers)::tail in 
+				let new_stack = (prev_function_name, prev_program_counter + 1, prev_registers)::tail in 
 				(heap, new_stack)
 	)
 
@@ -802,13 +793,15 @@ let add_iter_to_program program =
 	let instructions = [|
 		I_call (`L_Reg 0, 4, 4);
 		I_call (`L_Reg 0, 1, 3);
-		I_ret (`L_Reg 1)
+		I_const (`L_Reg 0, `L_Int 0);
+		I_ret (`L_Reg 0)
 	|] in 
 	Hashtbl.replace program ":iter" instructions;
 
 	let instructions = [|
 		I_call (`L_Reg 0, 1, 3);
-		I_ret (`L_Reg 1)
+		I_const (`L_Reg 0, `L_Int 0);
+		I_ret (`L_Reg 0)
 	|] in 
 	Hashtbl.replace program ":start_iter" instructions
 
