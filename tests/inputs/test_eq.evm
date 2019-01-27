@@ -1,0 +1,43 @@
+main: 
+	const r0, print_int
+	
+	# true - int
+	const r1, 0
+	const r2, 0
+	eq r1, r1, r2
+	call r0, 1, 1
+
+	# false - int
+	eq r1, r1, r2
+	call r0, 1, 1
+
+	# true - string
+	const r1, "foo"
+	const r2, "foo"
+	eq r1, r1, r2
+	call r0, 1, 1
+
+	# false - string
+	eq r1, r1, r2
+	call r0, 1, 1
+
+	# true - id
+	const r1, print_int
+	eq r1, r0, r1
+	call r0, 1, 1
+
+	# false - id
+	eq r1, r1, r2
+	call r0, 1, 1
+
+	# true - loc
+	mk_tab r1
+	mov r2, r1
+	eq r1, r1, r2
+	call r0, 1, 1
+
+	# false - loc
+	eq r1, r1, r2
+	call r0, 1, 1
+
+	ret r1

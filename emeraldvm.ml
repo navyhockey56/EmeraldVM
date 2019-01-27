@@ -412,8 +412,8 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
 			r1 <- r2 == r3
 	*)	
 	| I_eq (r1, r2, r3) -> 
-		let val1 = get_register_value registers r1 in 
-		let val2 = get_register_value registers r2 in 
+		let val1 = get_register_value registers r2 in 
+		let val2 = get_register_value registers r3 in 
 		let result = if (reg_eq val1 val2) then 1 else 0 in
 		(* Store the result *) 
 		update_register registers r1 (`L_Int result);
