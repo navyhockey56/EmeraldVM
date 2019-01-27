@@ -790,6 +790,22 @@ let rec run_aux (p:prog) (c:config) =
 
 
 let add_iter_to_program program =
+	(*
+		Right now you are cheating the implementation of
+		return.
+
+		When you run iter, you end up placing several 
+		calls onto the stack. The first item on the stack
+		is executed normally. However, the rest of the calls
+		are not... The return method comes back to the first instruction,
+		I_call, thinking it had just performed this call, so it moves the program
+		counter up one, which then places you on the I_const statement, and
+		thus you never make the call at at all. 
+
+		To circumvent the above problem, you have added in a bogus I_call
+		statement so that when the counter is incremented, you land on the
+		correct I_call statement, and the iteration occurs. 
+	*)
 	let instructions = [|
 		I_call (`L_Reg 0, 4, 4);
 		I_call (`L_Reg 0, 1, 3);
@@ -804,6 +820,12 @@ let add_iter_to_program program =
 		I_ret (`L_Reg 0)
 	|] in 
 	Hashtbl.replace program ":start_iter" instructions
+
+	let instructions = [|
+		I_call (`L_Reg 0, 1, 3);
+		I_const (`L_Reg 0, `L_Int 0);
+		I_ret (`L_Reg 0)
+	|]
 
 ;;
 
