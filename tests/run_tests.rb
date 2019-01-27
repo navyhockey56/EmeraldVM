@@ -7,6 +7,7 @@ def print_test_result(test_name, passed, message=nil)
 end
 
 number_passed = 0
+ 
 (input_dir = Dir["inputs/test_*.evm"]).each do |input|
 	test_name = input[7...(input.length - 4)]
 	output = `../main.byte "#{input}"`
@@ -34,4 +35,5 @@ number_passed = 0
 		number_passed += 1 if passed
 	end
 end
-	puts "Passed (#{number_passed} / #{input_dir.count} - #{(number_passed.to_f / input_dir.count) * 100}%)"
+
+puts "Passed (#{number_passed} / #{input_dir.count} - #{(number_passed.to_f / input_dir.count) * 100}%)"
