@@ -664,7 +664,7 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
 	 				let val2 = Hashtbl.find new_registers 1 in (
 	 					match (val1, val2) with
 	 						| (`L_Str str1, `L_Str str2) ->
-	 							let result = `L_Str (String.concat str1 [str2]) in  
+	 							let result = `L_Str (String.concat "" [str1; str2]) in  
 	 							let start_location = get_start_location instruction in  
 								Hashtbl.replace registers start_location result;
 	 							update_config (heap, stack) 1

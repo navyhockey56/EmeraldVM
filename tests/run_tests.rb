@@ -2,7 +2,7 @@ def print_test_result(test_name, passed, message=nil)
 	if passed
 			puts "Pass -> #{test_name}" 
 	else
-			puts "Fail -> #{test_name}\nMessage:#{message}"
+			puts "Fail -> #{test_name}\n#{message}"
 	end
 end
 

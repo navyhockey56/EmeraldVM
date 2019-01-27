@@ -1,0 +1,6 @@
+main:
+	const r0, "foo "
+	const r1, "bar"
+	const r2, concat
+	call r2, 0, 1
+	ret r0
