@@ -45,3 +45,14 @@ let disassemble (p:prog) =
 let print_heap h =
   Printf.printf "Heap mappings:\n";
   Hashtbl.iter (fun l v -> Printf.printf "  %a -> %a\n" value l value v) h
+
+let print_stack s = 
+  Printf.printf "Stack:\n";
+  Array.iter (fun (f, i, _) -> 
+    print_string "\t(Function: ";
+    print_string f;
+    print_string "; Counter: ";
+    print_int i;
+    print_string ")\n"
+  ) (Array.of_list s)
+

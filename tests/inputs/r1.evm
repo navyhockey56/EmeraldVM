@@ -1,31 +1,38 @@
-# This line is a comment
-
-foo:
-  const r0, 42
-  const r1, -42
-  const r2, foo
-  const r3, "foo"
-  mov r1, r2
-  add r1, r2, r3
-  sub r1, r2, r3
-  mul r1, r2, r3
-  div r1, r2, r3
-  eq r1, r2, r3
-  lt r1, r2, r3
-  leq r1, r2, r3
-  jmp 10
-  jmp -10
-  if_zero r10, 10
-  if_zero r10, -10
-  rd_glob r0, foo
-  wr_glob foo, r0
-  mk_tab r0
-  rd_tab r0, r1, r2
-  wr_tab r0, r1, r2
-  call r0, 10, 20
-  ret r0
-
 main:
-  const r0, 42
+  mk_tab r0
+  
+  const r1, "It was a pleasure to burn."
+  const r2, 1
+  wr_tab r0, r1, r2
+  
+  const r1, "Foo"
+  const r2, 2
+  wr_tab r0, r1, r2
+
+  const r1, "Bar"
+  const r2, 3
+  wr_tab r0, r1, r2
+
+  const r1, foo
+  const r3, iter
+  const r2, "input\n"
+  call r3, 0, 2  
+
   ret r0
-  halt r0
+
+# r0 - key 
+# r1 - value 
+# r2 - input 
+foo:
+  const r3, to_s
+  call r3, 0, 0
+
+  call r3, 1, 1
+  call r3, 2, 2
+
+  const r3, print_string
+  call r3, 0, 0
+  call r3, 1, 1
+  call r3, 2, 2
+
+  ret r0

@@ -149,6 +149,10 @@ let integer_reg (r:value) = match r with
 *)	
 let id_reg = function 
 	| `L_Id id -> id
+	| `L_Str s -> failwith (String.concat "L_Str is not a L_Id" [s])
+	| `L_Int _ -> failwith "L_Int is not a L_Id"
+	| `L_Loc _ -> failwith "L_Loc is not a L_Id"
+	| `L_Tab _ -> failwith "L_Tab is not a L_Id"
 	| _ -> failwith "non-id value"
 ;;
 
@@ -313,29 +317,39 @@ let run_is_a_operator (heap, stack) (r1, r2) is_a_op =
 	raising an error when trying to determine the start_location from an
 	I_Call instruction that doesn't exist.
 *)
-let iterate_key_val_pair key value function_to_call input stack = 
+let iterate_key_val_pair key value function_to_call input is_first_call = 
 	let new_registers = Hashtbl.create 32 in
 	Hashtbl.replace new_registers 0 (`L_Id function_to_call); 
 	Hashtbl.replace new_registers 1 key; 
-	Hashtbl.replace new_registers 2 key;
-	Hashtbl.replace new_registers 3 value;
-	let first_frame = (":iter", 0, new_registers) in 
-	first_frame::stack 
+	Hashtbl.replace new_registers 2 value;
+	Hashtbl.replace new_registers 3 input;
+	let function_name = if is_first_call then ":start_iter" else ":iter" in
+	(function_name, 0, new_registers)
 ;;
 
-let rec iterate_key_val_pairs key_vals function_to_call input stack = 
+let rec iterate_key_val_pairs_aux key_vals function_to_call input stack is_first_call = 
 	match key_vals with 
 		| [] -> stack
 		| (key, value)::tail -> 
-			let new_stack = iterate_key_val_pair key value function_to_call input stack in 
-			iterate_key_val_pairs tail function_to_call input new_stack
+			let new_stack_frame = iterate_key_val_pair key value function_to_call input is_first_call in 
+			new_stack_frame::(iterate_key_val_pairs_aux tail function_to_call input stack false)
+;;
+
+
+let rec iterate_key_val_pairs key_vals function_to_call input stack = 
+	iterate_key_val_pairs_aux key_vals function_to_call input stack true 
 ;;
 
 let rec run_inst (program:prog) ((heap, stack):config):config =
-	
+
 	(* Extract the instruction on the top of the stack *)
 	let (function_name, program_counter, registers)::tail = stack in 
 	let instruction = current_inst program stack in 
+	(*
+	Printf.printf "\nInstruction:\t%a\n" Disassembler.dis_instr instruction;
+	Disassembler.print_stack stack;
+	print_string "Output: \n\t";
+	*)
 	match instruction with 
 	
 	(*
@@ -606,14 +620,18 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
 					let register_value = Hashtbl.find new_registers 0 in 
 					let string_to_print = get_string register_value in 
 					print_string string_to_print;
-					update_register registers r register_value;
+
+					let start_location = get_start_location instruction in  
+					Hashtbl.replace registers start_location register_value;
 					update_config (heap, stack) 1
 
 				| "print_int" -> 
 					let register_value = Hashtbl.find new_registers 0 in 
 					let int_to_print = integer_reg register_value in 
 					print_int int_to_print;
-					update_register registers r register_value;
+
+					let start_location = get_start_location instruction in  
+					Hashtbl.replace registers start_location register_value;
 					update_config (heap, stack) 1
 
 				| "to_s" -> 
@@ -624,8 +642,9 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
 							| `L_Id id -> `L_Str (String.concat "ID '" [id; "'"] )
 							| `L_Int n -> `L_Str (string_of_int n) 
 							| _ -> failwith "invalid argument provided to to_s"	
-					) in 
-					update_register registers r value;
+					) in
+					let start_location = get_start_location instruction in  
+					Hashtbl.replace registers start_location value;
 					update_config (heap, stack) 1
  
 	 			| "to_i" -> 
@@ -636,7 +655,8 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
 		 					| `L_Int _ -> register_value
 		 					| _ -> failwith "invalid argument provided to to_i"
 	 				) in 
-	 				update_register registers r value; 
+	 				let start_location = get_start_location instruction in  
+					Hashtbl.replace registers start_location value;
 	 				update_config (heap, stack) 1
 
 	 			| "concat" -> 
@@ -645,7 +665,8 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
 	 					match (val1, val2) with
 	 						| (`L_Str str1, `L_Str str2) ->
 	 							let result = `L_Str (String.concat str1 [str2]) in  
-	 							update_register registers r result;
+	 							let start_location = get_start_location instruction in  
+								Hashtbl.replace registers start_location result;
 	 							update_config (heap, stack) 1
 	 						| _ -> 
 	 							failwith "invalid argument(s) provided to concat" 
@@ -656,7 +677,8 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
 	 					match register_val with 
 		 					| `L_Str str -> 
 		 						let length = `L_Int (String.length str) in 
-		 						update_register registers r length;
+		 						let start_location = get_start_location instruction in  
+								Hashtbl.replace registers start_location length;
 		 						update_config (heap, stack) 1
 		 					| _ -> 
 		 						failwith "Invalid argument provided to length"
@@ -668,7 +690,8 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
 	 						| `L_Loc _ -> 
 	 							let table = get_table (Hashtbl.find heap register_val) in 
 	 							let size = `L_Int (Hashtbl.length table) in 
-	 							update_register registers r size;
+	 							let start_location = get_start_location instruction in  
+								Hashtbl.replace registers start_location size;
 	 							update_config (heap, stack) 1
 	 					 	| _ ->
 	 					 		failwith "Invalid argument provided to size"
@@ -687,8 +710,10 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
  					let input = Hashtbl.find new_registers 2 in 
  					(* Add the function call to the stack for each key,value pair *)
 					let new_stack = iterate_key_val_pairs key_vals function_to_call input stack in
+					
 					(* Store the return value *)
- 					update_register registers r (`L_Int 0);
+					let start_location = get_start_location instruction in  
+					Hashtbl.replace registers start_location (`L_Int 0);
  					(* Update the config *)
  					(heap, new_stack)
 
@@ -706,11 +731,16 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
 		match stack with 
 			| _::(prev_function_name, prev_program_counter, prev_registers)::tail -> 
 				let prev_function = (Hashtbl.find program prev_function_name) in 
+				let increment_pc_by = (
+					match prev_function_name with 
+						| ":iter" -> 1 
+						| _ -> 1
+				) in 
 				let prev_instruction = (Array.get prev_function prev_program_counter) in 
 				let start_location = get_start_location prev_instruction in 
 				let value = get_register_value registers r in 
 				Hashtbl.replace prev_registers start_location value;
-				let new_stack = (prev_function_name, prev_program_counter + 1, prev_registers)::tail in 
+				let new_stack = (prev_function_name, prev_program_counter + increment_pc_by, prev_registers)::tail in 
 				(heap, new_stack)
 	)
 
@@ -761,16 +791,27 @@ let rec run_aux (p:prog) (c:config) =
 		let (_,s) = c in
 		let (_,_,reg_file)::_ = s in  
 		match (current_inst p s) with 
-			| I_halt r -> `Halt (Hashtbl.find reg_file (reg_value r))
+			| I_halt r -> 
+				`Halt (Hashtbl.find reg_file (reg_value r))
+			| _ -> 
+				failwith explanation
 ;;
 
 
 let add_iter_to_program program =
 	let instructions = [|
+		I_call (`L_Reg 0, 4, 4);
 		I_call (`L_Reg 0, 1, 3);
 		I_ret (`L_Reg 1)
 	|] in 
-	Hashtbl.replace program ":iter" instructions
+	Hashtbl.replace program ":iter" instructions;
+
+	let instructions = [|
+		I_call (`L_Reg 0, 1, 3);
+		I_ret (`L_Reg 1)
+	|] in 
+	Hashtbl.replace program ":start_iter" instructions
+
 ;;
 
 (*
