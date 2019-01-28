@@ -1,0 +1,5 @@
+main:
+	const r0, 2
+	const r1, 3
+	mul r0, r0, r1
+	ret r0

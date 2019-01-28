@@ -4,8 +4,8 @@
 
   let keywords = Hashtbl.create 37
   let _ =
-    List.iter (fun (k, t) -> Hashtbl.add keywords k t)
-              [ "const", CONST;
+    List.iter (fun (k, t) -> Hashtbl.add keywords k t) [ 
+    "const", CONST;
 		"mov", MOV;
 		"add", ADD;
 		"sub", SUB;
@@ -28,7 +28,7 @@
 		"call", CALL;
 		"ret", RET;
 		"halt", HALT;
-	      ]
+	  ]
 }
 
 let id = ['A'-'Z' 'a'-'z' '_']['A'-'Z' 'a'-'z' '0'-'9' '_']*
