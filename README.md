@@ -11,18 +11,18 @@ EmeraldVM is a virtual machine for the bytecode language EmeraldByte. The purpos
 ### Building the project
 To build the project, execute:
 ```
-> ./Makefile
+./Makefile
 ```
 Note: You must have OCaml, Ocamlbuild, Ocamlfind, and Ocamllex installed. If you are missing these requirements, it is reccomended to use `opam - https://opam.ocaml.org/doc/Install.html` to install them.
 
 ### Running an EmeraldByte program
 Running an EmeraldByte file is as simple as:
 ```
-> ./main.byte file_to_run.evm
+./main.byte file_to_run.evm
 ```
 You can also run the virtual machine with some extra logging using `-v`
 ```
-> ./main.byte -v file_to_run.evm
+./main.byte -v file_to_run.evm
 ```
 
 ### Running the EmeraldVM tests
