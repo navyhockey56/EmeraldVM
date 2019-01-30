@@ -65,6 +65,9 @@ Writes the value stored in register <i>r1</i> as a global value identified by <i
 #### call <i>r</i>, <i>N</i>, <i>M</i>
 Calls the method identified by register <i>r</i>. Maps the current registers <i>rN</i>, <i>rN+1</i>, ..., <i>rM</i> into the method's registers <i>r0</i>, <i>r1</i>, ..., <i>rM-N</i>. Stores the return result of the method into register <i>rN</i>.
 
+#### ret <i>r</i>
+Returns the value within register <i>r</i> from the current method to the caller.
+
 ### EmeraldByte, built in methods
 There are several built-in methods within EmeraldByte.
 
