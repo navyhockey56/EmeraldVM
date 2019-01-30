@@ -119,19 +119,26 @@ Returns the value within register <i>r</i> from the current method to the caller
 There are several built-in methods within EmeraldByte.
 
 #### to_s
+Takes a single parameter and replaces it with its string representation. For strings, the value remains unchanged; for integers, the value is encased in a string; for ids, the value is replaced with "ID '<i>id</i>'".
 
 #### to_i
+Takes a single parameter and replaces it with its integer representation. For integers, the value remains unchanged; for strings of integers, the integer within the string is returned; any other input will produce an error.
 
 #### print_int
+Takes a single parameter containing an integer and prints it out.
 
 #### print_string
+Takes a single parameter containing a string and print it out.
 
 #### concat
+Takes two parameters containing strings and returns their concatenated value.
 
 #### length
+Takes a single parameter containing a string and returns the length of the string.
 
 #### size
+Takes a singe parameter containing the location of a table and returns the number of keys contained within the table.
 
 #### iter
-
+Takes three parameters - the first is an id of a function which takes 3 parameters (key, value, input); the second parameter contains the location of the table to iterate over; and the last parameter contains any arbitrary value to be passed to the function identified by the first parameter. For each (key,value) pair in the specifed table, the pair along with the value from the third parameter will be passed to the function identified by the first parameter in a call statement.
 
