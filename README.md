@@ -1,10 +1,56 @@
 ## EmeraldVM
 EmeraldVM is a virtual machine for the bytecode language EmeraldByte. The purpose of EmeraldVM is to act as the virtual machine for Emerald, a simple imperative language which compiles into EmeraldByte.
 
+### Program Requirements
+- OCaml (built with 4.06)
+- OCamlbuild
+- OCamlfind
+- Ocamllex
+- Ruby (for running test script only)
+
+### Building the project
+To build the project, execute:
+```
+> ./Makefile
+```
+Note: You must have OCaml, Ocamlbuild, Ocamlfind, and Ocamllex installed. If you are missing these requirements, it is reccomended to use `opam - https://opam.ocaml.org/doc/Install.html` to install them.
+
+### Running an EmeraldByte program
+Running an EmeraldByte file is as simple as:
+```
+> ./main.byte file_to_run.evm
+```
+You can also run the virtual machine with some extra logging using `-v`
+```
+> ./main.byte -v file_to_run.evm
+```
+
+### Running the EmeraldVM tests
+The ruby test script requires your project structure to be:
+```
+main.byte
+tests/run_tests.rb
+tests/inputs/
+tests/outputs/
+```
+The test script will run any file contained within the `tests/inputs/` directory following the naming convention:
+- File name starts with `test_`
+- File has extension `.evm`
+
+The test results for each test script must be contained within the `tests/outputs/`, and must follow the naming convention:
+- File name is the same as the test script, except for the extension
+- File has extension `.out`
+
+To run the test script, navigate to the `tests/` directory and execute:
+```
+> ruby run_tests.rb
+```
+
 ### Overview of EmeraldByte
 The language EmeraldByte contains only a few instructions (detailed below). Registers are specified as `r0`, `r1`, ..., etc. Single line comments are supported through `#`. All EmeraldByte programs must contain a `main:` method, and all methods must end with the `ret` instruction.
 
 ### EmeraldByte Instructions
+
 #### const <i>r</i>, <i>N</i>
 Place integer <i>N</i> into register <i>r</i>.
 
@@ -68,6 +114,7 @@ Calls the method identified by register <i>r</i>. Maps the current registers <i>
 #### ret <i>r</i>
 Returns the value within register <i>r</i> from the current method to the caller.
 
+
 ### EmeraldByte, built in methods
 There are several built-in methods within EmeraldByte.
 
@@ -86,3 +133,5 @@ There are several built-in methods within EmeraldByte.
 #### size
 
 #### iter
+
+

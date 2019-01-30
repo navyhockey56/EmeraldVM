@@ -1,6 +1,6 @@
 def print_test_result(test_name, passed, message=nil)
 	if passed
-			puts "Pass -> #{test_name}" 
+			puts "Pass -> #{test_name}"
 	else
 			puts "Fail -> #{test_name}\n#{message}"
 	end
@@ -14,15 +14,18 @@ number_passed = 0
 
 	if (out_dir = Dir["outputs/#{test_name}/*.out"]).empty?
 		output_file = "outputs/#{test_name}.out"
-		
-		passed = (expected_output = File.read(output_file)) == output
-		message = "Expected:\n#{[expected_output]}\nBut output was:\n#{[output]}" unless passed
-		print_test_result test_name, passed, message
-		number_passed += 1 if passed
+		if File.exist? output_file
+      passed = (expected_output = File.read(output_file)) == output
+      message = "Expected:\n#{[expected_output]}\nBut output was:\n#{[output]}" unless passed
+      print_test_result test_name, passed, message
+      number_passed += passed ? 1 : 0;
+    else
+      print_test_result test_name, false, 'Test result not found in output directory'
+    end
 	else
 		passed = false
 		expected_outputs = []
-		
+
 		out_dir.find do |output_file|
 			passed ||= (expected_output = File.read(output_file)) == output
 			expected_outputs << expected_output unless passed
