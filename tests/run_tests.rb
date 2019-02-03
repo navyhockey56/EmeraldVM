@@ -10,7 +10,7 @@ number_passed = 0
 
 (input_dir = Dir["inputs/test_*.evm"]).each do |input|
 	test_name = input[7...(input.length - 4)]
-	output = `../main.byte "#{input}"`
+	output = `../emeraldvm "#{input}"`
 
 	if (out_dir = Dir["outputs/#{test_name}/*.out"]).empty?
 		output_file = "outputs/#{test_name}.out"

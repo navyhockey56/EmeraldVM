@@ -1,3 +1,4 @@
 *.byte
+emeraldvm
 _build/*
 *.sh
