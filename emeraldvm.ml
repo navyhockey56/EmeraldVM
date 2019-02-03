@@ -470,7 +470,7 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
 	| I_is_tab (r1, r2) -> 
 		let is_a_op = ( fun v -> 
 			match v with 
-			| `L_Tab _ -> 1
+			| `L_Loc _ -> 1
 			| _ -> 0
 		) in 
 		run_is_a_operator (heap, stack) (r1, r2) is_a_op
