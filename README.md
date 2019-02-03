@@ -18,7 +18,7 @@ Note: You must have OCaml, Ocamlbuild, Ocamlfind, and Ocamllex installed. If you
 ### Running an EmeraldByte program
 Running an EmeraldByte file is as simple as:
 ```
-./main.byte file_to_run.evm
+./emeraldvm file_to_run.evm
 ```
 You can also run the virtual machine with some extra logging using `-v`
 ```
@@ -43,7 +43,7 @@ The test results for each test script must be contained within the `tests/output
 
 To run the test script, navigate to the `tests/` directory and execute:
 ```
-> ruby run_tests.rb
+ruby run_tests.rb
 ```
 
 ### Overview of EmeraldByte
