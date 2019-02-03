@@ -28,7 +28,7 @@ You can also run the virtual machine with some extra logging using `-v`
 ### Running the EmeraldVM tests
 The ruby test script requires your project structure to be:
 ```
-main.byte
+emeraldvm
 tests/run_tests.rb
 tests/inputs/
 tests/outputs/
