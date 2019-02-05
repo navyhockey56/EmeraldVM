@@ -31,7 +31,7 @@
 	  ]
 }
 
-let id = ['A'-'Z' 'a'-'z' '_']['A'-'Z' 'a'-'z' '0'-'9' '_']*
+let id = ['A'-'Z' 'a'-'z' '_']['A'-'Z' 'a'-'z' '0'-'9' '_']*['?']?
 
 rule token = parse
   [' ' '\t' '\r']		{ token lexbuf } (* skip whitespace *)
