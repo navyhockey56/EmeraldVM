@@ -1,0 +1,7 @@
+main:
+  mk_tab r0
+  const r1, "foo"
+  const r2, "bar"
+  wr_tab r0, r1, r2
+  has_tab r3, r0, r2
+  ret r3 

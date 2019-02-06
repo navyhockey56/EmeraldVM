@@ -19,6 +19,26 @@ let reg_value = function
 	| `L_Reg n -> n
 ;;
 
+let is_str = function 
+	| `L_Str _ -> true 
+	| _ -> false 
+;;
+
+let is_int = function 
+	| `L_Int _ -> true 
+	| _ -> false 
+;;
+
+let is_loc = function 
+	| `L_Loc _ -> true 
+	| _ -> false 
+;;
+
+let is_id = function 
+	| `L_Id _ -> true 
+	| _ -> false 
+;;
+
 let get_register_value registers register = 
 	Hashtbl.find registers (reg_value register)
 ;;
@@ -242,7 +262,13 @@ let print_reg = function
 	| _ -> print_string "table"
 ;;
 
-
+let register_to_s = function 
+	| `L_Int n -> "Reg( Int = " ^ (string_of_int n) ^ " )"
+	| `L_Str str ->  "Reg ( String = " ^ str ^ " )"
+	| `L_Id id -> "Reg ( ID = " ^ id ^ " )"
+	| `L_Loc n -> "Reg( Pointer = " ^ (string_of_int n) ^ " )"
+	| _ -> "Reg( Table )"
+;;
 (*
 	Extracts the value from a table value
 
@@ -500,7 +526,14 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
 			r <- heap(x)
 	*)						
 	| I_rd_glob (r, x) -> 
-		let global_var = Hashtbl.find heap (convert_id_to_value x) in
+		let id = (convert_id_to_value x) in 
+		if not (Hashtbl.mem heap id) then 
+			failwith (
+				"Illegal call to rd_glob - The ID " ^ (register_to_s id) ^
+				", is not bound within the heap"
+			)
+		;
+		let global_var = Hashtbl.find heap id in
 		update_register registers r global_var;
 		update_config (heap, stack) 1
 	
@@ -537,23 +570,33 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
 			r1 <- table(r3)
 	*)
 	| I_rd_tab (r1, r2, r3) -> 
-		(* Get the pointer *)
-		let pointer = get_register_value registers r2 in (
-	 		match pointer with 
-			| `L_Loc loc -> 
-				(* Get the table off the heap *)
-				let table = get_table (Hashtbl.find heap pointer) in 
-				(* Get the key from the register *)
-				let table_key = get_register_value registers r3 in 
-				(* Retrieve the value from the table *)
-				let table_val = Hashtbl.find table table_key in 
-				(* Update the register *)
-				update_register registers r1 table_val;
-				(* Update the config *)
-				update_config (heap, stack) 1
 
-			| _ -> failwith "r2 is not a location"
-	)
+		let pointer = get_register_value registers r2 in
+
+		if not (is_loc pointer) then 
+			failwith (
+				"Illegal call to rd_tab - Expected to find a Pointer in the 2nd register" ^ 
+				", but found: " ^ register_to_s pointer
+			)
+		;
+
+		if not (Hashtbl.mem heap pointer) then 
+			failwith (
+				"Illegal call to rd_tab - The Pointer " ^ (register_to_s pointer) ^
+				", is not bound within the heap"
+			)
+		;
+		
+		(* Get the table off the heap *)
+		let table = get_table (Hashtbl.find heap pointer) in 
+		(* Get the key from the register *)
+		let table_key = get_register_value registers r3 in 
+		(* Retrieve the value from the table *)
+		let table_val = Hashtbl.find table table_key in 
+		(* Update the register *)
+		update_register registers r1 table_val;
+		(* Update the config *)
+		update_config (heap, stack) 1
 	
 	(*
 		Write to table
@@ -563,6 +606,21 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
 	| I_wr_tab (r1, r2, r3) -> 
 		(* Get the pointer *)
 		let pointer = get_register_value registers r1 in
+
+		if not (is_loc pointer) then 
+			failwith (
+				"Illegal call to wr_tab - Expected to find a Pointer in the 1st register" ^ 
+				", but found: " ^ register_to_s pointer
+			)
+		;
+
+		if not (Hashtbl.mem heap pointer) then 
+			failwith (
+				"Illegal call to wr_tab - The Pointer " ^ (register_to_s pointer) ^
+				", is not bound within the heap"
+			)
+		;
+
 		(* Get the table off the heap *)
 		let table = get_table (Hashtbl.find heap pointer) in 
 		(* Retrieve key to write to *)
@@ -585,6 +643,21 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
 	| I_has_tab (r1, r2, r3) -> 
 		(* Get the pointer to the table *)
 		let pointer = get_register_value registers r2 in 
+
+		if not (is_loc pointer) then 
+			failwith (
+				"Illegal call to has_tab - Expected to find a Pointer in the 2nd register" ^ 
+				", but found: " ^ register_to_s pointer
+			)
+		;
+
+		if not (Hashtbl.mem heap pointer) then 
+			failwith (
+				"Illegal call to has_tab - The Pointer " ^ (register_to_s pointer) ^
+				", is not bound within the heap"
+			)
+		;
+
 		(* Get the table off the heap *)
 		let table = get_table (Hashtbl.find heap pointer) in 
 		(* Get the key to check for *)

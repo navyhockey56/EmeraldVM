@@ -11,7 +11,11 @@ let run_program program verbose =
   if !verbose then print_string "Starting program" else ();
   if !verbose then print_string seperator else ();
 
-  match Emeraldvm.run_prog program with
+  let result = try Emeraldvm.run_prog program with Failure ex ->
+    print_endline ("Runtime Failure: " ^ ex); exit 0 
+  in 
+
+  match result with
     | `Halt v -> 
       if !verbose then print_string seperator else ();
       print_string "HALT REACHED: ";

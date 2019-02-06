@@ -1,0 +1,5 @@
+main:
+  const r0, "test"
+  const r1, "test"
+  eq r2, r0, r1
+  ret r2

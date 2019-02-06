@@ -8,7 +8,7 @@ end
 
 number_passed = 0
 
-(input_dir = Dir["inputs/test_*.evm"]).each do |input|
+(input_dir = Dir["inputs/test_*.evm"].sort).each do |input|
 	test_name = input[7...(input.length - 4)]
 	output = `../emeraldvm "#{input}"`
 

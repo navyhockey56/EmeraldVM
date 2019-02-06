@@ -1,0 +1,4 @@
+main:
+  const r0, 1
+  has_tab r1, r0, r0
+  ret r1

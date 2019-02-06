@@ -1,0 +1,5 @@
+main:
+  const r0, "true?"
+  const r1, "nope"
+  eq r2, r0, r1
+  ret r2
