@@ -166,7 +166,7 @@ let reg_eq r1 r2 = match (r1,r2) with
 	| (`L_Int n1, `L_Int n2) -> n1 = n2
 	| (`L_Str str1, `L_Str str2)->  str1 = str2
 	| (`L_Id id1, `L_Id id2) -> id1 = id2
-	| (`L_Loc n1, `L_Loc n2) -> n2 = n2
+	| (`L_Loc n1, `L_Loc n2) -> n1 = n2
 	| _ -> false
 ;;
 
