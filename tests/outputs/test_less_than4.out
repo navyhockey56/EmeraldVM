@@ -1,0 +1,1 @@
+Runtime Failure: Illegal call to lt. Excepted 3rd register to contain an integer, but found: Reg ( ID = foo )

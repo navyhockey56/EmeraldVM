@@ -22,8 +22,8 @@ let dis_instr o = function
   | I_lt (r1, r2, r3) -> Printf.fprintf o "  lt %a, %a, %a" reg r1 reg r2 reg r3
   | I_leq (r1, r2, r3) -> Printf.fprintf o "  leq %a, %a, %a" reg r1 reg r2 reg r3
   | I_is_int (r1, r2) -> Printf.fprintf o "  is_int %a, %a" reg r1 reg r2
-  | I_is_str (r1, r2) -> Printf.fprintf o "  is_int %a, %a" reg r1 reg r2
-  | I_is_tab (r1, r2) -> Printf.fprintf o "  is_int %a, %a" reg r1 reg r2
+  | I_is_str (r1, r2) -> Printf.fprintf o "  is_str %a, %a" reg r1 reg r2
+  | I_is_tab (r1, r2) -> Printf.fprintf o "  is_tab %a, %a" reg r1 reg r2
   | I_jmp n -> Printf.fprintf o "  jmp %d" n
   | I_if_zero (r, n) -> Printf.fprintf o "  if_zero %a, %d" reg r n
   | I_rd_glob (r, x) -> Printf.fprintf o "  rd_glob %a, %a" reg r id x

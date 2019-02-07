@@ -327,7 +327,7 @@ let run_binary_operator (heap, stack) (r1, r2, r3) binary_op instr_name =
 
 	if not (is_int v2) then
 		failwith (
-			"Illegal call to " ^ instr_name ^ ". Excepted 2rd register to contain an integer, " ^ 
+			"Illegal call to " ^ instr_name ^ ". Excepted 3rd register to contain an integer, " ^ 
 			"but found: " ^ (register_to_s v2)
 		)
 	;
