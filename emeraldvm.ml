@@ -118,6 +118,18 @@ let max_regs (p:prog) (f:string):int =
 	(max_aux 0 0 arr)
 ;;
 
+let get_top_of_stack stack =
+	match stack with 
+		| head::_ -> head
+		| [] -> failwith "Fatal error: Stack is empty, cannot retrieve the first element."
+;;
+
+let extract_stack_contents stack =
+	match stack with 
+		| (function_name, program_counter, registers)::tail -> 
+			(function_name, program_counter, registers, tail)
+		| _ -> failwith "Fatal error: Stack is empty, cannot extract its contents"
+
 (*
 	Retrieves the current instruction of the given program
 	with the given config.
@@ -132,8 +144,8 @@ let current_inst (p:prog) (stack):instr =
 		Get the function name and program counter off the
 	 	top of the stack, then retrieve the instruction at
 	 	the location the program counter specifies.
-	 *)
-	let (function_name, program_counter, _)::_ = stack in 
+	*)
+	let (function_name, program_counter, _) = get_top_of_stack stack in 
 	let rubevm_function = Hashtbl.find p function_name in 
 	Array.get rubevm_function program_counter
 ;;
@@ -293,19 +305,35 @@ let get_string s = match s with
 
 
 let update_config (heap, stack) increase_program_counter_by = 
-	let (function_name, program_counter, registers)::tail = stack in 
+	let (function_name, program_counter, registers, tail) = extract_stack_contents stack in 
 	let new_program_counter = program_counter + increase_program_counter_by in 
 	let new_stack = (function_name, new_program_counter, registers)::tail in 
 	(heap, new_stack)
 ;;
 	
-let run_binary_operator (heap, stack) (r1, r2, r3) binary_op =
-	(* Expand the stack *)
-	let (function_name, program_counter, registers)::tail = stack in 
+let run_binary_operator (heap, stack) (r1, r2, r3) binary_op instr_name =
+	let (function_name, program_counter, registers, tail) = extract_stack_contents stack in 
 	
 	(* Extract the values *)
-	let v1 = integer_reg (get_register_value registers r2) in
-	let v2 = integer_reg (get_register_value registers r3) in
+	let v1 = get_register_value registers r2 in 
+	let v2 = get_register_value registers r3 in 
+
+	if not (is_int v1) then
+		failwith (
+			"Illegal call to " ^ instr_name ^ ". Excepted the 2nd register to contain an integer, " ^ 
+			"but found: " ^ (register_to_s v1)
+		)
+	;
+
+	if not (is_int v2) then
+		failwith (
+			"Illegal call to " ^ instr_name ^ ". Excepted 2rd register to contain an integer, " ^ 
+			"but found: " ^ (register_to_s v2)
+		)
+	;
+
+	let v1 = integer_reg v1 in
+	let v2 = integer_reg v2 in
 	
 	(* Run the binary operator *)
 	let result = `L_Int (binary_op v1 v2) in
@@ -319,7 +347,7 @@ let run_binary_operator (heap, stack) (r1, r2, r3) binary_op =
 
 let run_is_a_operator (heap, stack) (r1, r2) is_a_op = 
 	(* Expand the stack *)
-	let (function_name, program_counter, registers)::tail = stack in 
+	let (function_name, program_counter, registers, tail) = extract_stack_contents stack in 
 	
 	(* Extract the value *)
 	let v = get_register_value registers r2 in 
@@ -369,7 +397,7 @@ let rec iterate_key_val_pairs key_vals function_to_call input stack =
 let rec run_inst (program:prog) ((heap, stack):config):config =
 
 	(* Extract the instruction on the top of the stack *)
-	let (function_name, program_counter, registers)::tail = stack in 
+	let (function_name, program_counter, registers, tail) = extract_stack_contents stack in  
 	let instruction = current_inst program stack in 
 	(*
 	Printf.printf "\nInstruction:\t%a\n" Disassembler.dis_instr instruction;
@@ -407,7 +435,7 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
 	*)
 	| I_add (r1, r2, r3) -> 
 		let binary_op = fun a b -> a + b in
-		run_binary_operator (heap, stack) (r1, r2, r3) binary_op
+		run_binary_operator (heap, stack) (r1, r2, r3) binary_op "add"
 	
 	(* 
 		Substrction
@@ -415,7 +443,7 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
 	*)	
 	| I_sub (r1, r2, r3) ->
 		let binary_op = fun a b -> a - b in
-		run_binary_operator (heap, stack) (r1, r2, r3) binary_op
+		run_binary_operator (heap, stack) (r1, r2, r3) binary_op "sub"
 	
 	(* 
 		Multiplication
@@ -423,7 +451,7 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
 	*)	
 	| I_mul (r1, r2, r3) -> 
 		let binary_op = fun a b -> a * b in
-		run_binary_operator (heap, stack) (r1, r2, r3) binary_op
+		run_binary_operator (heap, stack) (r1, r2, r3) binary_op "mul"
 	
 	(* 
 		Division
@@ -431,7 +459,7 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
 	*)		
 	| I_div (r1, r2, r3) -> 
 		let binary_op = fun a b -> a / b in
-		run_binary_operator (heap, stack) (r1, r2, r3) binary_op
+		run_binary_operator (heap, stack) (r1, r2, r3) binary_op "div"
 		
 	(* 
 		Equality 
@@ -454,7 +482,7 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
 	*)								
 	| I_lt (r1, r2, r3) ->
 		let binary_op = fun a b -> if a < b then 1 else 0 in
-		run_binary_operator (heap, stack) (r1, r2, r3) binary_op
+		run_binary_operator (heap, stack) (r1, r2, r3) binary_op "lt"
 
 	(*
 		Less than / equal to 
@@ -462,7 +490,7 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
 	*)							
 	| I_leq (r1, r2, r3) -> 
 		let binary_op = fun a b -> if a <= b then 1 else 0 in
-		run_binary_operator (heap, stack) (r1, r2, r3) binary_op
+		run_binary_operator (heap, stack) (r1, r2, r3) binary_op "leq"
 	
 	(* 
 		Is an integer?
@@ -806,11 +834,12 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
 				Hashtbl.replace prev_registers start_location value;
 				let new_stack = (prev_function_name, prev_program_counter + 1, prev_registers)::tail in 
 				(heap, new_stack)
+			| _ -> failwith "Fatal error: The stack does not contain an instruction to return to."
 	)
 
 	(* You should return a halt value here, not raise an error *)
 	| I_halt r -> 
-		raise (Failure "halt reached")	
+		failwith "Halt Reached"
 
 ;;
 
@@ -853,10 +882,10 @@ let rec run_aux (p:prog) (c:config) =
 	(* Handle errors *)
 	with Failure explanation -> 
 		let (_,s) = c in
-		let (_,_,reg_file)::_ = s in  
+		let (_, _, registers, tail) = extract_stack_contents s in 
 		match (current_inst p s) with 
 			| I_halt r -> 
-				`Halt (Hashtbl.find reg_file (reg_value r))
+				`Halt (Hashtbl.find registers (reg_value r))
 			| _ -> 
 				failwith explanation
 ;;
