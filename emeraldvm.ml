@@ -154,6 +154,478 @@ let iterate_key_val_pairs key_vals function_to_call input stack =
 	iterate_key_val_pairs_aux key_vals function_to_call input stack true 
 ;;
 
+
+(*
+	Runs const(reg, value)
+	
+	@param [config]
+	@param [reg * value] (r,v) - The register and value from the instruction.
+	@return [config] The updated config
+*)
+let run_const (heap, stack, registers) (r, v) =
+	(* Place the value into the register *) 
+	Helpers.update_register registers r v;
+	update_config (heap, stack) 1
+;;
+
+(*
+	Runs mov(reg, reg)
+
+	@param [config]
+	@param [reg * reg] 
+	@return [config]
+*)
+let run_mov (heap, stack, registers) (r1, r2) = 
+  (* Copy the value from r2 into r1 *)
+  let value = Helpers.get_register_value registers r2 in
+  Helpers.update_register registers r1 value;
+  update_config (heap, stack) 1
+;;
+
+(*
+	Runs add(reg, reg, reg)
+
+	@param [config]
+	@param [reg * reg * reg] (r1, r2, r3) - The registers from the instruction
+	@return [config] The updated config
+*)
+let run_add (heap, stack) (r1, r2, r3) = 
+	let binary_op = fun a b -> a + b in
+	run_binary_operator (heap, stack) (r1, r2, r3) binary_op "add"
+;;
+
+(*
+	Runs sub(reg, reg, reg)
+
+	@param [config]
+	@param [reg * reg * reg]
+	@return [config]
+*)
+let run_sub (heap, stack) (r1, r2, r3) = 
+	let binary_op = fun a b -> a - b in
+	run_binary_operator (heap, stack) (r1, r2, r3) binary_op "sub"
+;;
+
+(*
+	Runs mul(reg, reg, reg)
+
+	@param [config]
+	@param [reg * reg * reg]
+	@return [config]
+*)
+let run_mul (heap, stack) (r1, r2, r3) =  
+	let binary_op = fun a b -> a * b in
+	run_binary_operator (heap, stack) (r1, r2, r3) binary_op "mul"
+;;
+
+(*
+	Runs div(reg, reg, reg)
+
+	@param [config]
+	@param [reg * reg * reg]
+	@return [config]
+*)
+let run_div (heap, stack) (r1, r2, r3) = 
+	let binary_op = fun a b -> a / b in
+	run_binary_operator (heap, stack) (r1, r2, r3) binary_op "div"
+;;
+
+(*
+	Runs lt(reg, reg, reg)
+
+	@param [config]
+	@param [reg * reg * reg]
+	@return [config]
+*)
+let run_lt (heap, stack) (r1, r2, r3) = 
+	let binary_op = fun a b -> if a < b then 1 else 0 in
+	run_binary_operator (heap, stack) (r1, r2, r3) binary_op "lt"
+;;
+
+(*
+	Runs leq(reg, reg, reg)
+
+	@param [config]
+	@param [reg * reg * reg]
+	@return [config]
+*)
+let run_leq (heap, stack) (r1, r2, r3) =  
+	let binary_op = fun a b -> if a <= b then 1 else 0 in
+	run_binary_operator (heap, stack) (r1, r2, r3) binary_op "leq"
+;;
+
+(*
+	Runs eq(reg, reg, reg)
+
+	@param [config]
+	@param [reg * reg * reg]
+	@return [config]
+*)
+let run_eq (heap, stack, registers) (r1, r2, r3) = 
+	let val1 = Helpers.get_register_value registers r2 in 
+	let val2 = Helpers.get_register_value registers r3 in 
+	let result = if (Helpers.are_registers_equal val1 val2) then 1 else 0 in
+	(* Store the result *) 
+	Helpers.update_register registers r1 (`L_Int result);
+	(* Update the config *)
+	update_config (heap, stack) 1
+;;
+
+(*
+	Runs is_int(reg, reg)
+
+	@param [config]
+	@param [reg * reg]
+	@return [config]
+*)
+let run_is_int (heap, stack) (r1, r2) = 
+	let is_a_op = ( fun v -> 
+		match v with 
+			| `L_Int _ -> 1
+			| _ -> 0
+	) in 
+	run_is_a_operator (heap, stack) (r1, r2) is_a_op
+;;
+
+(*
+	Runs is_str(reg, reg)
+
+	@param [config]
+	@param [reg * reg]
+	@return [config]
+*)
+let run_is_str (heap, stack) (r1, r2) = 
+	let is_a_op = ( fun v ->
+	  match v with 
+			| `L_Str _ -> 1
+			| _ -> 0
+	) in 
+	run_is_a_operator (heap, stack) (r1, r2) is_a_op
+;;
+
+(*
+	Runs is_tab(reg, reg)
+
+	@param [config]
+	@param [reg * reg]
+	@return [config]
+*)
+let run_is_tab (heap, stack) (r1, r2) = 
+	let is_a_op = ( fun v -> 
+		match v with 
+			| `L_Loc _ -> 1
+			| _ -> 0
+	) in 
+	run_is_a_operator (heap, stack) (r1, r2) is_a_op
+;;
+
+(*
+	Runs rd_glob(reg, id)
+
+	@param [config]
+	@param [reg * id]
+	@return [config]
+*)
+let run_rd_glob (heap, stack, registers) (r, id) =
+	let id = (Helpers.convert_id_to_value id) in 
+	if not (Hashtbl.mem heap id) then 
+		failwith (
+			"Illegal call to rd_glob - The ID " ^ (Helpers.register_to_s id) ^
+			", is not bound within the heap"
+		)
+	;
+	let global_var = Hashtbl.find heap id in
+	Helpers.update_register registers r global_var;
+	update_config (heap, stack) 1
+;;
+
+(*
+	Runs wr_glob(id, reg)
+
+	@param [config]
+	@param [id * reg]
+	@return [config]
+*)
+let run_wr_glob (heap, stack, registers) (id, r) = 
+	let v = Helpers.get_register_value registers r in 
+	Hashtbl.replace heap (Helpers.convert_id_to_value id) v; 
+	update_config (heap, stack) 1
+;;
+
+(*
+	Runs mk_tab(reg)
+*)
+let run_mk_tab (heap, stack, registers) r = 
+	(* Create a pointer to the table *)
+	let loc = `L_Loc (Helpers.next_location ()) in
+	(* Create the table *) 
+	let new_table = `L_Tab (Hashtbl.create 16) in 
+	(* Store the table in the heap *)
+	Hashtbl.replace heap loc new_table;
+	(* Store the pointer in the register *) 
+	Helpers.update_register registers r loc;
+	(* Update the config *)
+	update_config (heap, stack) 1
+;;
+
+(*
+	Runs has_tab(reg, reg, reg)
+*)
+let run_has_tab (heap, stack, registers) (r1, r2, r3) =
+	(* Get the pointer to the table *)
+	let pointer = Helpers.get_register_value registers r2 in 
+
+	if not (Helpers.is_loc pointer) then 
+		failwith (
+			"Illegal call to has_tab - Expected to find a Pointer in the 2nd register" ^ 
+			", but found: " ^ Helpers.register_to_s pointer
+		)
+	;
+
+	if not (Hashtbl.mem heap pointer) then 
+		failwith (
+			"Illegal call to has_tab - The Pointer " ^ (Helpers.register_to_s pointer) ^
+			", is not bound within the heap"
+		)
+	;
+
+	(* Get the table off the heap *)
+	let table = Helpers.extract_table_from_reg (Hashtbl.find heap pointer) in 
+	(* Get the key to check for *)
+	let table_key = Helpers.get_register_value registers r3 in 
+	(* Check the table for the key *)
+	let result = (if Hashtbl.mem table table_key then 1 else 0) in
+	(* Store the result *)
+	Helpers.update_register registers r1 (`L_Int result); 
+	(* Update the config *)
+	update_config (heap, stack) 1
+;;
+
+(*
+	Runs wr_tab(reg, reg, reg)
+*)
+let run_wr_tab (heap, stack, registers) (r1, r2, r3) =
+	(* Get the pointer *)
+	let pointer = Helpers.get_register_value registers r1 in
+
+	if not (Helpers.is_loc pointer) then 
+		failwith (
+			"Illegal call to wr_tab - Expected to find a Pointer in the 1st register" ^ 
+			", but found: " ^ Helpers.register_to_s pointer
+		)
+	;
+
+	if not (Hashtbl.mem heap pointer) then 
+		failwith (
+			"Illegal call to wr_tab - The Pointer " ^ (Helpers.register_to_s pointer) ^
+			", is not bound within the heap"
+		)
+	;
+
+	(* Get the table off the heap *)
+	let table = Helpers.extract_table_from_reg (Hashtbl.find heap pointer) in 
+	(* Retrieve key to write to *)
+	let table_key = Helpers.get_register_value registers r2 in 
+	(* Get the value to store *)
+	let value = Helpers.get_register_value registers r3 in 
+	(* Store the value in the table *)
+	Hashtbl.replace table table_key value;
+	(* Update the table within the heap *)
+	Hashtbl.replace heap pointer (`L_Tab table);
+	(* Update the config *)
+	update_config (heap, stack) 1
+;;
+
+(*
+	Runs rd_tab(reg, reg, reg)
+*)
+let run_rd_tab (heap, stack, registers) (r1, r2, r3) = 
+	let pointer = Helpers.get_register_value registers r2 in
+
+	if not (Helpers.is_loc pointer) then 
+		failwith (
+			"Illegal call to rd_tab - Expected to find a Pointer in the 2nd register" ^ 
+			", but found: " ^ Helpers.register_to_s pointer
+		)
+	;
+
+	if not (Hashtbl.mem heap pointer) then 
+		failwith (
+			"Illegal call to rd_tab - The Pointer " ^ (Helpers.register_to_s pointer) ^
+			", is not bound within the heap"
+		)
+	;
+		
+	(* Get the table off the heap *)
+	let table = Helpers.extract_table_from_reg (Hashtbl.find heap pointer) in 
+	(* Get the key from the register *)
+	let table_key = Helpers.get_register_value registers r3 in 
+	(* Retrieve the value from the table *)
+	let table_val = Hashtbl.find table table_key in 
+	(* Update the register *)
+	Helpers.update_register registers r1 table_val;
+	(* Update the config *)
+	update_config (heap, stack) 1
+;;
+
+(*
+	Runs jmp(int)
+*)
+let run_jmp (heap, stack) n = 
+	(* Update the config *)
+	update_config (heap, stack) (n + 1)
+;;
+
+(*
+	Runs if_zero(reg, int)
+*)
+let run_if_zero (heap, stack, registers) (r, n) =
+	let v = Helpers.get_register_value registers r in ( 
+		match v with 
+			| `L_Int 0 -> update_config (heap, stack) (n + 1)
+			| _ -> update_config (heap, stack) 1
+	)
+;;
+
+(*
+	Runs call(reg, int, int)
+*)
+let run_call (heap, stack, registers, program, instruction) (r, start_register, end_register) = 
+	(* Copy over the specified registers into a new table *)
+	let new_registers = Helpers.copy_registers 0 start_register end_register registers (Hashtbl.create 32) in  
+	(* Retrieve the function to call *)
+	let function_to_call = Helpers.extract_id_from_reg (Helpers.get_register_value registers r) in 
+		
+	(* If the function is stored in the program, call it *)
+	if Hashtbl.mem program function_to_call then (
+		let first_frame = (function_to_call, 0, new_registers) in 
+		let new_stack = first_frame::stack in 
+		(heap, new_stack)
+	) 
+	(* The function must be built-in or a typo *)
+	else begin 
+		match function_to_call with 
+			| "print_string" -> 
+				let register_value = Hashtbl.find new_registers 0 in 
+				let string_to_print = Helpers.extract_string_from_reg register_value in 
+				print_string string_to_print;
+
+				let start_location = Helpers.get_start_location instruction in  
+				Hashtbl.replace registers start_location register_value;
+				update_config (heap, stack) 1
+
+			| "print_int" -> 
+				let register_value = Hashtbl.find new_registers 0 in 
+				let int_to_print = Helpers.extract_int_from_reg register_value in 
+				print_int int_to_print;
+
+				let start_location = Helpers.get_start_location instruction in  
+				Hashtbl.replace registers start_location register_value;
+				update_config (heap, stack) 1
+
+			| "to_s" -> 
+				let register_value = Hashtbl.find new_registers 0 in 
+				let value = ( 
+					match register_value with 
+						| `L_Str str -> register_value
+						| `L_Id id -> `L_Str (String.concat "ID '" [id; "'"] )
+						| `L_Int n -> `L_Str (string_of_int n) 
+						| _ -> failwith "invalid argument provided to to_s"	
+				) in
+				let start_location = Helpers.get_start_location instruction in  
+				Hashtbl.replace registers start_location value;
+				update_config (heap, stack) 1
+ 
+			| "to_i" -> 
+				let register_value = Hashtbl.find new_registers 0 in
+				let value = (
+					match register_value with 
+	 					| `L_Str str -> `L_Int (int_of_string str)
+	 					| `L_Int _ -> register_value
+	 					| _ -> failwith "invalid argument provided to to_i"
+				) in 
+				let start_location = Helpers.get_start_location instruction in  
+				Hashtbl.replace registers start_location value;
+				update_config (heap, stack) 1
+
+			| "concat" -> 
+				let val1 = Hashtbl.find new_registers 0 in 
+				let val2 = Hashtbl.find new_registers 1 in (
+					match (val1, val2) with
+						| (`L_Str str1, `L_Str str2) ->
+							let result = `L_Str (String.concat "" [str1; str2]) in  
+							let start_location = Helpers.get_start_location instruction in  
+							Hashtbl.replace registers start_location result;
+	 						update_config (heap, stack) 1
+	 					| _ -> 
+	 						failwith "invalid argument(s) provided to concat" 
+	 			)
+ 				 
+	 		| "length" -> 
+	 			let register_val = Hashtbl.find new_registers 0 in (
+	 				match register_val with 
+						| `L_Str str -> 
+							let length = `L_Int (String.length str) in 
+							let start_location = Helpers.get_start_location instruction in  
+							Hashtbl.replace registers start_location length;
+							update_config (heap, stack) 1
+						| _ -> 
+							failwith "Invalid argument provided to length"
+	 			)
+ 				  
+	 		| "size" ->
+	 			let register_val = Hashtbl.find new_registers 0 in (
+	 				match register_val with 
+	 					| `L_Loc _ -> 
+	 						let table = Helpers.extract_table_from_reg (Hashtbl.find heap register_val) in 
+	 						let size = `L_Int (Hashtbl.length table) in 
+	 						let start_location = Helpers.get_start_location instruction in  
+							Hashtbl.replace registers start_location size;
+	 						update_config (heap, stack) 1
+	 				 	| _ ->
+	 				 		failwith "Invalid argument provided to size"
+	 			)	
+
+ 			| "iter" ->
+ 				(* Get the pointer to the table *)
+ 				let pointer = Hashtbl.find new_registers 0 in 
+ 				(* Get the table *)
+ 				let table = Helpers.extract_table_from_reg (Hashtbl.find heap pointer) in 
+ 				(* Get the key,value pairs from the table *)
+ 				let key_vals = (Hashtbl.fold (fun k v lst -> (k, v)::lst) table []) in
+ 				(* Get the function to iterate with *)
+ 				let function_to_call = Helpers.extract_id_from_reg (Hashtbl.find new_registers 1) in 
+ 				(* Get the input to the function (other than a key,value pair) *)
+ 				let input = Hashtbl.find new_registers 2 in 
+ 				(* Add the function call to the stack for each key,value pair *)
+				let new_stack = iterate_key_val_pairs key_vals function_to_call input stack in
+ 				(* Update the config *)
+ 				(heap, new_stack)
+
+			| _ -> 
+				failwith "Invalid function name provided" 
+ 		end
+;;
+
+(*
+	Runs ret(reg)
+*)
+let run_ret (heap, stack, registers, program) r = 
+	match stack with 
+		| _::(prev_function_name, prev_program_counter, prev_registers)::tail -> 
+			let prev_function = (Hashtbl.find program prev_function_name) in 
+			let prev_instruction = (Array.get prev_function prev_program_counter) in 
+			let start_location = Helpers.get_start_location prev_instruction in 
+			let value = Helpers.get_register_value registers r in 
+			Hashtbl.replace prev_registers start_location value;
+			let new_stack = (prev_function_name, prev_program_counter + 1, prev_registers)::tail in 
+			(heap, new_stack)
+	
+		| _ -> 
+			failwith "Fatal error: The stack does not contain an instruction to return to."
+;;
+
+
 (*
 	Performs the work required by the instruction on the top of the stack, and
 	outputs the updated state of the program (the heap and stack).
@@ -162,7 +634,7 @@ let iterate_key_val_pairs key_vals function_to_call input stack =
 	@param [config] heap, stack - The current heap and stack of the program.
 	@return [config] The updated heap and stack
 *)
-let rec run_inst (program:prog) ((heap, stack):config):config =
+let run_inst (program:prog) ((heap, stack):config):config =
 
 	(* Extract the instruction on the top of the stack *)
 	let (function_name, program_counter, registers, tail) = Helpers.extract_stack_contents stack in  
@@ -337,476 +809,6 @@ let rec run_inst (program:prog) ((heap, stack):config):config =
 	(* You should return a halt value here, not raise an error *)
 	| I_halt r -> 
 		failwith "Halt Reached"
-
-(*
-	Runs const(reg, value)
-	
-	@param [config]
-	@param [reg * value] (r,v) - The register and value from the instruction.
-	@return [config] The updated config
-*)
-and run_const (heap, stack, registers) (r, v) =
-	(* Place the value into the register *) 
-	Helpers.update_register registers r v;
-	update_config (heap, stack) 1
-
-
-(*
-	Runs mov(reg, reg)
-
-	@param [config]
-	@param [reg * reg] 
-	@return [config]
-*)
-and run_mov (heap, stack, registers) (r1, r2) = 
-  (* Copy the value from r2 into r1 *)
-  let value = Helpers.get_register_value registers r2 in
-  Helpers.update_register registers r1 value;
-  update_config (heap, stack) 1
-
-
-(*
-	Runs add(reg, reg, reg)
-
-	@param [config]
-	@param [reg * reg * reg] (r1, r2, r3) - The registers from the instruction
-	@return [config] The updated config
-*)
-and run_add (heap, stack) (r1, r2, r3) = 
-	let binary_op = fun a b -> a + b in
-	run_binary_operator (heap, stack) (r1, r2, r3) binary_op "add"
-
-
-(*
-	Runs sub(reg, reg, reg)
-
-	@param [config]
-	@param [reg * reg * reg]
-	@return [config]
-*)
-and run_sub (heap, stack) (r1, r2, r3) = 
-	let binary_op = fun a b -> a - b in
-	run_binary_operator (heap, stack) (r1, r2, r3) binary_op "sub"
-
-
-(*
-	Runs mul(reg, reg, reg)
-
-	@param [config]
-	@param [reg * reg * reg]
-	@return [config]
-*)
-and run_mul (heap, stack) (r1, r2, r3) =  
-	let binary_op = fun a b -> a * b in
-	run_binary_operator (heap, stack) (r1, r2, r3) binary_op "mul"
-
-
-(*
-	Runs div(reg, reg, reg)
-
-	@param [config]
-	@param [reg * reg * reg]
-	@return [config]
-*)
-and run_div (heap, stack) (r1, r2, r3) = 
-	let binary_op = fun a b -> a / b in
-	run_binary_operator (heap, stack) (r1, r2, r3) binary_op "div"
-
-
-(*
-	Runs lt(reg, reg, reg)
-
-	@param [config]
-	@param [reg * reg * reg]
-	@return [config]
-*)
-and run_lt (heap, stack) (r1, r2, r3) = 
-	let binary_op = fun a b -> if a < b then 1 else 0 in
-	run_binary_operator (heap, stack) (r1, r2, r3) binary_op "lt"
-
-
-(*
-	Runs leq(reg, reg, reg)
-
-	@param [config]
-	@param [reg * reg * reg]
-	@return [config]
-*)
-and run_leq (heap, stack) (r1, r2, r3) =  
-	let binary_op = fun a b -> if a <= b then 1 else 0 in
-	run_binary_operator (heap, stack) (r1, r2, r3) binary_op "leq"
-
-
-(*
-	Runs eq(reg, reg, reg)
-
-	@param [config]
-	@param [reg * reg * reg]
-	@return [config]
-*)
-and run_eq (heap, stack, registers) (r1, r2, r3) = 
-	let val1 = Helpers.get_register_value registers r2 in 
-	let val2 = Helpers.get_register_value registers r3 in 
-	let result = if (Helpers.are_registers_equal val1 val2) then 1 else 0 in
-	(* Store the result *) 
-	Helpers.update_register registers r1 (`L_Int result);
-	(* Update the config *)
-	update_config (heap, stack) 1
-
-
-(*
-	Runs is_int(reg, reg)
-
-	@param [config]
-	@param [reg * reg]
-	@return [config]
-*)
-and run_is_int (heap, stack) (r1, r2) = 
-	let is_a_op = ( fun v -> 
-		match v with 
-			| `L_Int _ -> 1
-			| _ -> 0
-	) in 
-	run_is_a_operator (heap, stack) (r1, r2) is_a_op
-
-
-(*
-	Runs is_str(reg, reg)
-
-	@param [config]
-	@param [reg * reg]
-	@return [config]
-*)
-and run_is_str (heap, stack) (r1, r2) = 
-	let is_a_op = ( fun v ->
-	  match v with 
-			| `L_Str _ -> 1
-			| _ -> 0
-	) in 
-	run_is_a_operator (heap, stack) (r1, r2) is_a_op
-
-
-(*
-	Runs is_tab(reg, reg)
-
-	@param [config]
-	@param [reg * reg]
-	@return [config]
-*)
-and run_is_tab (heap, stack) (r1, r2) = 
-	let is_a_op = ( fun v -> 
-		match v with 
-			| `L_Loc _ -> 1
-			| _ -> 0
-	) in 
-	run_is_a_operator (heap, stack) (r1, r2) is_a_op
-
-
-(*
-	Runs rd_glob(reg, id)
-
-	@param [config]
-	@param [reg * id]
-	@return [config]
-*)
-and run_rd_glob (heap, stack, registers) (r, id) =
-	let id = (Helpers.convert_id_to_value id) in 
-	if not (Hashtbl.mem heap id) then 
-		failwith (
-			"Illegal call to rd_glob - The ID " ^ (Helpers.register_to_s id) ^
-			", is not bound within the heap"
-		)
-	;
-	let global_var = Hashtbl.find heap id in
-	Helpers.update_register registers r global_var;
-	update_config (heap, stack) 1
-
-
-(*
-	Runs wr_glob(id, reg)
-
-	@param [config]
-	@param [id * reg]
-	@return [config]
-*)
-and run_wr_glob (heap, stack, registers) (id, r) = 
-	let v = Helpers.get_register_value registers r in 
-	Hashtbl.replace heap (Helpers.convert_id_to_value id) v; 
-	update_config (heap, stack) 1
-
-
-(*
-	Runs mk_tab(reg)
-*)
-and run_mk_tab (heap, stack, registers) r = 
-	(* Create a pointer to the table *)
-	let loc = `L_Loc (Helpers.next_location ()) in
-	(* Create the table *) 
-	let new_table = `L_Tab (Hashtbl.create 16) in 
-	(* Store the table in the heap *)
-	Hashtbl.replace heap loc new_table;
-	(* Store the pointer in the register *) 
-	Helpers.update_register registers r loc;
-	(* Update the config *)
-	update_config (heap, stack) 1
-
-
-(*
-	Runs has_tab(reg, reg, reg)
-*)
-and run_has_tab (heap, stack, registers) (r1, r2, r3) =
-	(* Get the pointer to the table *)
-	let pointer = Helpers.get_register_value registers r2 in 
-
-	if not (Helpers.is_loc pointer) then 
-		failwith (
-			"Illegal call to has_tab - Expected to find a Pointer in the 2nd register" ^ 
-			", but found: " ^ Helpers.register_to_s pointer
-		)
-	;
-
-	if not (Hashtbl.mem heap pointer) then 
-		failwith (
-			"Illegal call to has_tab - The Pointer " ^ (Helpers.register_to_s pointer) ^
-			", is not bound within the heap"
-		)
-	;
-
-	(* Get the table off the heap *)
-	let table = Helpers.extract_table_from_reg (Hashtbl.find heap pointer) in 
-	(* Get the key to check for *)
-	let table_key = Helpers.get_register_value registers r3 in 
-	(* Check the table for the key *)
-	let result = (if Hashtbl.mem table table_key then 1 else 0) in
-	(* Store the result *)
-	Helpers.update_register registers r1 (`L_Int result); 
-	(* Update the config *)
-	update_config (heap, stack) 1
-
-
-(*
-	Runs wr_tab(reg, reg, reg)
-*)
-and run_wr_tab (heap, stack, registers) (r1, r2, r3) =
-	(* Get the pointer *)
-	let pointer = Helpers.get_register_value registers r1 in
-
-	if not (Helpers.is_loc pointer) then 
-		failwith (
-			"Illegal call to wr_tab - Expected to find a Pointer in the 1st register" ^ 
-			", but found: " ^ Helpers.register_to_s pointer
-		)
-	;
-
-	if not (Hashtbl.mem heap pointer) then 
-		failwith (
-			"Illegal call to wr_tab - The Pointer " ^ (Helpers.register_to_s pointer) ^
-			", is not bound within the heap"
-		)
-	;
-
-	(* Get the table off the heap *)
-	let table = Helpers.extract_table_from_reg (Hashtbl.find heap pointer) in 
-	(* Retrieve key to write to *)
-	let table_key = Helpers.get_register_value registers r2 in 
-	(* Get the value to store *)
-	let value = Helpers.get_register_value registers r3 in 
-	(* Store the value in the table *)
-	Hashtbl.replace table table_key value;
-	(* Update the table within the heap *)
-	Hashtbl.replace heap pointer (`L_Tab table);
-	(* Update the config *)
-	update_config (heap, stack) 1
-
-
-(*
-	Runs rd_tab(reg, reg, reg)
-*)
-and run_rd_tab (heap, stack, registers) (r1, r2, r3) = 
-	let pointer = Helpers.get_register_value registers r2 in
-
-	if not (Helpers.is_loc pointer) then 
-		failwith (
-			"Illegal call to rd_tab - Expected to find a Pointer in the 2nd register" ^ 
-			", but found: " ^ Helpers.register_to_s pointer
-		)
-	;
-
-	if not (Hashtbl.mem heap pointer) then 
-		failwith (
-			"Illegal call to rd_tab - The Pointer " ^ (Helpers.register_to_s pointer) ^
-			", is not bound within the heap"
-		)
-	;
-		
-	(* Get the table off the heap *)
-	let table = Helpers.extract_table_from_reg (Hashtbl.find heap pointer) in 
-	(* Get the key from the register *)
-	let table_key = Helpers.get_register_value registers r3 in 
-	(* Retrieve the value from the table *)
-	let table_val = Hashtbl.find table table_key in 
-	(* Update the register *)
-	Helpers.update_register registers r1 table_val;
-	(* Update the config *)
-	update_config (heap, stack) 1
-
-
-(*
-	Runs jmp(int)
-*)
-and run_jmp (heap, stack) n = 
-	(* Update the config *)
-	update_config (heap, stack) (n + 1)
-
-
-(*
-	Runs if_zero(reg, int)
-*)
-and run_if_zero (heap, stack, registers) (r, n) =
-	let v = Helpers.get_register_value registers r in ( 
-		match v with 
-			| `L_Int 0 -> update_config (heap, stack) (n + 1)
-			| _ -> update_config (heap, stack) 1
-	)
-
-
-(*
-	Runs call(reg, int, int)
-*)
-and run_call (heap, stack, registers, program, instruction) (r, start_register, end_register) = 
-	(* Copy over the specified registers into a new table *)
-	let new_registers = Helpers.copy_registers 0 start_register end_register registers (Hashtbl.create 32) in  
-	(* Retrieve the function to call *)
-	let function_to_call = Helpers.extract_id_from_reg (Helpers.get_register_value registers r) in 
-		
-	(* If the function is stored in the program, call it *)
-	if Hashtbl.mem program function_to_call then (
-		let first_frame = (function_to_call, 0, new_registers) in 
-		let new_stack = first_frame::stack in 
-		(heap, new_stack)
-	) 
-	(* The function must be built-in or a typo *)
-	else begin 
-		match function_to_call with 
-			| "print_string" -> 
-				let register_value = Hashtbl.find new_registers 0 in 
-				let string_to_print = Helpers.extract_string_from_reg register_value in 
-				print_string string_to_print;
-
-				let start_location = Helpers.get_start_location instruction in  
-				Hashtbl.replace registers start_location register_value;
-				update_config (heap, stack) 1
-
-			| "print_int" -> 
-				let register_value = Hashtbl.find new_registers 0 in 
-				let int_to_print = Helpers.extract_int_from_reg register_value in 
-				print_int int_to_print;
-
-				let start_location = Helpers.get_start_location instruction in  
-				Hashtbl.replace registers start_location register_value;
-				update_config (heap, stack) 1
-
-			| "to_s" -> 
-				let register_value = Hashtbl.find new_registers 0 in 
-				let value = ( 
-					match register_value with 
-						| `L_Str str -> register_value
-						| `L_Id id -> `L_Str (String.concat "ID '" [id; "'"] )
-						| `L_Int n -> `L_Str (string_of_int n) 
-						| _ -> failwith "invalid argument provided to to_s"	
-				) in
-				let start_location = Helpers.get_start_location instruction in  
-				Hashtbl.replace registers start_location value;
-				update_config (heap, stack) 1
- 
-			| "to_i" -> 
-				let register_value = Hashtbl.find new_registers 0 in
-				let value = (
-					match register_value with 
-	 					| `L_Str str -> `L_Int (int_of_string str)
-	 					| `L_Int _ -> register_value
-	 					| _ -> failwith "invalid argument provided to to_i"
-				) in 
-				let start_location = Helpers.get_start_location instruction in  
-				Hashtbl.replace registers start_location value;
-				update_config (heap, stack) 1
-
-			| "concat" -> 
-				let val1 = Hashtbl.find new_registers 0 in 
-				let val2 = Hashtbl.find new_registers 1 in (
-					match (val1, val2) with
-						| (`L_Str str1, `L_Str str2) ->
-							let result = `L_Str (String.concat "" [str1; str2]) in  
-							let start_location = Helpers.get_start_location instruction in  
-							Hashtbl.replace registers start_location result;
-	 						update_config (heap, stack) 1
-	 					| _ -> 
-	 						failwith "invalid argument(s) provided to concat" 
-	 			)
- 				 
-	 		| "length" -> 
-	 			let register_val = Hashtbl.find new_registers 0 in (
-	 				match register_val with 
-						| `L_Str str -> 
-							let length = `L_Int (String.length str) in 
-							let start_location = Helpers.get_start_location instruction in  
-							Hashtbl.replace registers start_location length;
-							update_config (heap, stack) 1
-						| _ -> 
-							failwith "Invalid argument provided to length"
-	 			)
- 				  
-	 		| "size" ->
-	 			let register_val = Hashtbl.find new_registers 0 in (
-	 				match register_val with 
-	 					| `L_Loc _ -> 
-	 						let table = Helpers.extract_table_from_reg (Hashtbl.find heap register_val) in 
-	 						let size = `L_Int (Hashtbl.length table) in 
-	 						let start_location = Helpers.get_start_location instruction in  
-							Hashtbl.replace registers start_location size;
-	 						update_config (heap, stack) 1
-	 				 	| _ ->
-	 				 		failwith "Invalid argument provided to size"
-	 			)	
-
- 			| "iter" ->
- 				(* Get the pointer to the table *)
- 				let pointer = Hashtbl.find new_registers 0 in 
- 				(* Get the table *)
- 				let table = Helpers.extract_table_from_reg (Hashtbl.find heap pointer) in 
- 				(* Get the key,value pairs from the table *)
- 				let key_vals = (Hashtbl.fold (fun k v lst -> (k, v)::lst) table []) in
- 				(* Get the function to iterate with *)
- 				let function_to_call = Helpers.extract_id_from_reg (Hashtbl.find new_registers 1) in 
- 				(* Get the input to the function (other than a key,value pair) *)
- 				let input = Hashtbl.find new_registers 2 in 
- 				(* Add the function call to the stack for each key,value pair *)
-				let new_stack = iterate_key_val_pairs key_vals function_to_call input stack in
- 				(* Update the config *)
- 				(heap, new_stack)
-
-			| _ -> 
-				failwith "Invalid function name provided" 
- 		end
-
-
-(*
-	Runs ret(reg)
-*)
-and run_ret (heap, stack, registers, program) r = 
-	match stack with 
-		| _::(prev_function_name, prev_program_counter, prev_registers)::tail -> 
-			let prev_function = (Hashtbl.find program prev_function_name) in 
-			let prev_instruction = (Array.get prev_function prev_program_counter) in 
-			let start_location = Helpers.get_start_location prev_instruction in 
-			let value = Helpers.get_register_value registers r in 
-			Hashtbl.replace prev_registers start_location value;
-			let new_stack = (prev_function_name, prev_program_counter + 1, prev_registers)::tail in 
-			(heap, new_stack)
-	
-		| _ -> 
-			failwith "Fatal error: The stack does not contain an instruction to return to."
-
 ;;
 
 (*
@@ -889,7 +891,6 @@ let add_iter_to_program program =
 		I_ret (`L_Reg 0)
 	|] in 
 	Hashtbl.replace program ":start_iter" instructions
-
 ;;
 
 (*
