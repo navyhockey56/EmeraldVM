@@ -1,0 +1,1 @@
+Runtime Failure: Illegal call to add. Excepted the 2nd register to contain an integer, but found: Reg( Pointer = 1 )

@@ -1,0 +1,5 @@
+main:
+  const r0, 3
+  mk_tab r1
+  div r2, r0, r1
+  ret r2
