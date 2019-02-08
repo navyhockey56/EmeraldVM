@@ -6,11 +6,28 @@ def print_test_result(test_name, passed, message=nil)
 	end
 end
 
-number_passed = 0
+def print_deliminater
+	puts "\n------------------------\n"
+end
+
+
+def print_test_results(passed, failed)
+	print_deliminater
+	puts "\nPassed: #{passed}\n"
+	failed.each do |failure|
+		print_deliminater
+		puts "\nFailed: #{failure[:test_name]}\n#{failure[:message]}"
+	end
+	print_deliminater
+end
+
+passed_tests = []
+failed_tests = []
 
 (input_dir = Dir["inputs/test_*.evm"].sort).each do |input|
-	puts "\n----------------\n"
 	test_name = input[7...(input.length - 4)]
+	puts "Ruuning: #{test_name}\n"
+	
 	output = `../emeraldvm "#{input}"`
 
 	if (out_dir = Dir["outputs/#{test_name}/*.out"]).empty?
@@ -18,10 +35,10 @@ number_passed = 0
 		if File.exist? output_file
       passed = (expected_output = File.read(output_file)) == output
       message = "Expected:\n#{[expected_output]}\nBut output was:\n#{[output]}" unless passed
-      print_test_result test_name, passed, message
-      number_passed += passed ? 1 : 0;
+      passed_tests << test_name if passed 
+      failed_tests << {test_name: test_name, message: message} unless passed
     else
-      print_test_result test_name, false, 'Test result not found in output directory'
+    	failed_tests << {test_name: test_name, message: 'Test result not found in output directory'}
     end
 	else
 		passed = false
@@ -32,12 +49,13 @@ number_passed = 0
 			expected_outputs << expected_output unless passed
 			passed
 		end
-		unless passed
-			message = "Expected one of: #{expected_outputs}\nBut output was:\n#{[output]}"
-		end
-		print_test_result test_name, passed, message
-		number_passed += 1 if passed
+		message = "Expected one of: #{expected_outputs}\nBut output was:\n#{[output]}"
+		passed_tests << test_name if passed 
+    failed_tests << {test_name: test_name, message: message} unless passed
 	end
 end
 
+number_passed = passed_tests.count
+print_test_results passed_tests, failed_tests
 puts "\nResult: (#{number_passed} / #{input_dir.count}) - #{(number_passed.to_f / input_dir.count) * 100}%"
+
