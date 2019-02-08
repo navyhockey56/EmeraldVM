@@ -45,7 +45,7 @@ let run_binary_operator (heap, stack) (r1, r2, r3) binary_op instr_name =
 	Helpers.update_register registers r1 result;
 
 	(* Update the config *)
-	update_config (heap, stack) 1
+	Helpers.update_config (heap, stack) 1
 ;;
 
 (*
@@ -71,7 +71,7 @@ let run_is_a_operator (heap, stack) (r1, r2) is_a_op =
 	Helpers.update_register registers r1 result;
 	
 	(* Update the config *)
-	update_config (heap, stack) 1
+	Helpers.update_config (heap, stack) 1
 ;;
 
 (*
@@ -84,7 +84,7 @@ let run_is_a_operator (heap, stack) (r1, r2) is_a_op =
 let run_const (heap, stack, registers) (r, v) =
 	(* Place the value into the register *) 
 	Helpers.update_register registers r v;
-	update_config (heap, stack) 1
+	Helpers.update_config (heap, stack) 1
 ;;
 
 (*
@@ -98,7 +98,7 @@ let run_mov (heap, stack, registers) (r1, r2) =
   (* Copy the value from r2 into r1 *)
   let value = Helpers.get_register_value registers r2 in
   Helpers.update_register registers r1 value;
-  update_config (heap, stack) 1
+  Helpers.update_config (heap, stack) 1
 ;;
 
 (*
@@ -187,7 +187,7 @@ let run_eq (heap, stack, registers) (r1, r2, r3) =
 	(* Store the result *) 
 	Helpers.update_register registers r1 (`L_Int result);
 	(* Update the config *)
-	update_config (heap, stack) 1
+	Helpers.update_config (heap, stack) 1
 ;;
 
 (*
@@ -255,7 +255,7 @@ let run_rd_glob (heap, stack, registers) (r, id) =
 	;
 	let global_var = Hashtbl.find heap id in
 	Helpers.update_register registers r global_var;
-	update_config (heap, stack) 1
+	Helpers.update_config (heap, stack) 1
 ;;
 
 (*
@@ -268,7 +268,7 @@ let run_rd_glob (heap, stack, registers) (r, id) =
 let run_wr_glob (heap, stack, registers) (id, r) = 
 	let v = Helpers.get_register_value registers r in 
 	Hashtbl.replace heap (Helpers.convert_id_to_value id) v; 
-	update_config (heap, stack) 1
+	Helpers.update_config (heap, stack) 1
 ;;
 
 (*
@@ -284,7 +284,7 @@ let run_mk_tab (heap, stack, registers) r =
 	(* Store the pointer in the register *) 
 	Helpers.update_register registers r loc;
 	(* Update the config *)
-	update_config (heap, stack) 1
+	Helpers.update_config (heap, stack) 1
 ;;
 
 (*
@@ -317,7 +317,7 @@ let run_has_tab (heap, stack, registers) (r1, r2, r3) =
 	(* Store the result *)
 	Helpers.update_register registers r1 (`L_Int result); 
 	(* Update the config *)
-	update_config (heap, stack) 1
+	Helpers.update_config (heap, stack) 1
 ;;
 
 (*
@@ -352,7 +352,7 @@ let run_wr_tab (heap, stack, registers) (r1, r2, r3) =
 	(* Update the table within the heap *)
 	Hashtbl.replace heap pointer (`L_Tab table);
 	(* Update the config *)
-	update_config (heap, stack) 1
+	Helpers.update_config (heap, stack) 1
 ;;
 
 (*
@@ -384,7 +384,7 @@ let run_rd_tab (heap, stack, registers) (r1, r2, r3) =
 	(* Update the register *)
 	Helpers.update_register registers r1 table_val;
 	(* Update the config *)
-	update_config (heap, stack) 1
+	Helpers.update_config (heap, stack) 1
 ;;
 
 (*
@@ -392,7 +392,7 @@ let run_rd_tab (heap, stack, registers) (r1, r2, r3) =
 *)
 let run_jmp (heap, stack) n = 
 	(* Update the config *)
-	update_config (heap, stack) (n + 1)
+	Helpers.update_config (heap, stack) (n + 1)
 ;;
 
 (*
@@ -401,8 +401,8 @@ let run_jmp (heap, stack) n =
 let run_if_zero (heap, stack, registers) (r, n) =
 	let v = Helpers.get_register_value registers r in ( 
 		match v with 
-			| `L_Int 0 -> update_config (heap, stack) (n + 1)
-			| _ -> update_config (heap, stack) 1
+			| `L_Int 0 -> Helpers.update_config (heap, stack) (n + 1)
+			| _ -> Helpers.update_config (heap, stack) 1
 	)
 ;;
 
@@ -416,7 +416,7 @@ let run_print_string (heap, stack, instruction) (registers, new_registers) =
 
 	let start_location = Helpers.get_start_location instruction in  
 	Hashtbl.replace registers start_location register_value;
-	update_config (heap, stack) 1
+	Helpers.update_config (heap, stack) 1
 ;;
 
 (*
@@ -429,7 +429,7 @@ let run_print_int (heap, stack, instruction) (registers, new_registers) =
 
 	let start_location = Helpers.get_start_location instruction in  
 	Hashtbl.replace registers start_location register_value;
-	update_config (heap, stack) 1
+	Helpers.update_config (heap, stack) 1
 ;;
 
 (*
@@ -446,7 +446,7 @@ let run_to_s (heap, stack, instruction) (registers, new_registers) =
 	) in
 	let start_location = Helpers.get_start_location instruction in  
 	Hashtbl.replace registers start_location value;
-	update_config (heap, stack) 1
+	Helpers.update_config (heap, stack) 1
 ;; 
 
 (*
@@ -462,7 +462,7 @@ let run_to_i (heap, stack, instruction) (registers, new_registers) =
 	) in 
 	let start_location = Helpers.get_start_location instruction in  
 	Hashtbl.replace registers start_location value;
-	update_config (heap, stack) 1
+	Helpers.update_config (heap, stack) 1
 ;;
 
 (*
@@ -476,7 +476,7 @@ let run_size (heap, stack, instruction) (registers, new_registers) =
 			let size = `L_Int (Hashtbl.length table) in 
 			let start_location = Helpers.get_start_location instruction in  
 			Hashtbl.replace registers start_location size;
-			update_config (heap, stack) 1
+			Helpers.update_config (heap, stack) 1
 	 	| _ ->
 	 		failwith "Invalid argument provided to size"
 ;;
@@ -491,7 +491,7 @@ let run_length (heap, stack, instruction) (registers, new_registers) =
 			let length = `L_Int (String.length str) in 
 			let start_location = Helpers.get_start_location instruction in  
 			Hashtbl.replace registers start_location length;
-			update_config (heap, stack) 1
+			Helpers.update_config (heap, stack) 1
 		| _ -> 
 			failwith "Invalid argument provided to length"
 ;;
@@ -507,7 +507,7 @@ let run_concat (heap, stack, instruction) (registers, new_registers) =
 			let result = `L_Str (String.concat "" [str1; str2]) in  
 			let start_location = Helpers.get_start_location instruction in  
 			Hashtbl.replace registers start_location result;
-			update_config (heap, stack) 1
+			Helpers.update_config (heap, stack) 1
 		| _ -> 
 			failwith "invalid argument(s) provided to concat" 
 ;;
@@ -833,45 +833,11 @@ let rec run_aux (p:prog) (c:config) =
 ;;
 
 
-let add_iter_to_program program =
-	(*
-		Right now you are cheating the implementation of
-		return.
-
-		When you run iter, you end up placing several 
-		calls onto the stack. The first item on the stack
-		is executed normally. However, the rest of the calls
-		are not... 
-		The return method comes back to the first instruction,
-		I_call, thinking it had just performed this call, so it moves the program
-		counter up one, which then places you on the I_const statement, and
-		thus you never make the call at at all. 
-
-		To circumvent the above problem, you have added in a bogus I_call
-		statement so that when the counter is incremented, you land on the
-		correct I_call statement, and the iteration occurs. 
-	*)
-	let instructions = [|
-		I_call (`L_Reg 0, 4, 4);
-		I_call (`L_Reg 0, 1, 3);
-		I_const (`L_Reg 0, `L_Int 0);
-		I_ret (`L_Reg 0)
-	|] in 
-	Hashtbl.replace program ":iter" instructions;
-
-	let instructions = [|
-		I_call (`L_Reg 0, 1, 3);
-		I_const (`L_Reg 0, `L_Int 0);
-		I_ret (`L_Reg 0)
-	|] in 
-	Hashtbl.replace program ":start_iter" instructions
-;;
-
 (*
 	Runs the given program
 *)		
 let run_prog (p:prog) = 
-	add_iter_to_program p;
+	Helpers.add_iter_to_program p;
 	let heap = (Hashtbl.create 32) in 
 	let stack = [("main", 0, (Hashtbl.create 32))] in 
 	run_aux p (heap, stack)
