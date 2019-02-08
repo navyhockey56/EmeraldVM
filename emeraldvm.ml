@@ -4,21 +4,6 @@ open Helpers
 type prog_ret = [ `Reg of value | `Halt of value ]
 
 (*
-	Increments the program counter within the top frame of the stack by
-	the specified value.
-
-	@param (heap, stack) - The heap and stack
-	@param (int) increase_program_counter_by - The amount to increase the program counter by
-	@return (heap, stack) The heap and updated stack.
-*)
-let update_config (heap, stack) increase_program_counter_by = 
-	let (function_name, program_counter, registers, tail) = Helpers.extract_stack_contents stack in 
-	let new_program_counter = program_counter + increase_program_counter_by in 
-	let new_stack = (function_name, new_program_counter, registers)::tail in 
-	(heap, new_stack)
-;;
-
-(*
 	Handles binary operator instructions (add, sub, mul, div, lt, leq).
 	Note: True is represented by 1, false by 0.
 
@@ -88,72 +73,6 @@ let run_is_a_operator (heap, stack) (r1, r2) is_a_op =
 	(* Update the config *)
 	update_config (heap, stack) 1
 ;;
-
-(*
-	Creates an iterations stack frame for the built-in iter method.
-
-	@param [value] key -  A key in the table from the iter call
-	@param [value] value - The value mapped to by the key
-	@param [string] function_to_call - The string from the `L_Id of the function to call
-	@param [value] input - The value passed to every iteration in iter.
-	@param [bool] is_first_call - Whether or not this is the first frame in the iter stack.
-	@return (string * int * regs) A stack frame for the call to iter.
-*)
-let iterate_key_val_pair key value function_to_call input is_first_call = 
-	(* Create a new set of registers *)
-	let new_registers = Hashtbl.create 32 in
-
-	(* 
-		Place the function_to_call, key, value, and input into the first 4 registers 
-		so that they can be accessed by :start_iter or :iter
-	*)
-	Hashtbl.replace new_registers 0 (`L_Id function_to_call); 
-	Hashtbl.replace new_registers 1 key; 
-	Hashtbl.replace new_registers 2 value;
-	Hashtbl.replace new_registers 3 input;
-
-	(* Determine the hidden function to call *)
-	let function_name = if is_first_call then ":start_iter" else ":iter" in
-	(* Create the stack frame *)
-	(function_name, 0, new_registers)
-;;
-
-(*
-	Creates the stack frames for each (key,value) pair in key_vals for the iter method, 
-	and adds them to the top of the stack.
-	Note: This function is called by iterate_key_val_pairs for the purpose of flipping
-	the (boolean) value fo is_first_call from true to false.
-
-	@param [(value * value) list] key_vals - The list of (key, value) paris
-	@param [string] function_to_call - The function to call for iter
-	@param [value] input - The input passed to all iter frames
-	@param [stack] stack - the stack
-	@param [bool] is_first_call - Whether or not this is the first frame for iter
-	@return [stack] The updated stack 
-*)
-let rec iterate_key_val_pairs_aux key_vals function_to_call input stack is_first_call = 
-	match key_vals with 
-		| [] -> stack
-		| (key, value)::tail -> 
-			let new_stack_frame = iterate_key_val_pair key value function_to_call input is_first_call in 
-			new_stack_frame::(iterate_key_val_pairs_aux tail function_to_call input stack false)
-;;
-
-(*
-	Creates the stack frames for each (key,value) pair in key_vals for the iter method, 
-	and adds them to the top of the stack. 
-
-	@param [(value * value) list] key_vals - The list of (key, value) paris
-	@param [string] function_to_call - The function to call for iter
-	@param [value] input - The input passed to all iter frames
-	@param [stack] stack - the stack
-	@return [stack] The updated stack
-*)
-let iterate_key_val_pairs key_vals function_to_call input stack = 
-	(* Delegate work to auxillary method, signal this is the first frame *)
-	iterate_key_val_pairs_aux key_vals function_to_call input stack true 
-;;
-
 
 (*
 	Runs const(reg, value)
@@ -488,6 +407,133 @@ let run_if_zero (heap, stack, registers) (r, n) =
 ;;
 
 (*
+	Runs built in function print_string
+*)
+let run_print_string (heap, stack, instruction) (registers, new_registers) =
+	let register_value = Hashtbl.find new_registers 0 in 
+	let string_to_print = Helpers.extract_string_from_reg register_value in 
+	print_string string_to_print;
+
+	let start_location = Helpers.get_start_location instruction in  
+	Hashtbl.replace registers start_location register_value;
+	update_config (heap, stack) 1
+;;
+
+(*
+	Runs built-in function print_int
+*)
+let run_print_int (heap, stack, instruction) (registers, new_registers) = 
+	let register_value = Hashtbl.find new_registers 0 in 
+	let int_to_print = Helpers.extract_int_from_reg register_value in 
+	print_int int_to_print;
+
+	let start_location = Helpers.get_start_location instruction in  
+	Hashtbl.replace registers start_location register_value;
+	update_config (heap, stack) 1
+;;
+
+(*
+	Runs built-in function to_s
+*)
+let run_to_s (heap, stack, instruction) (registers, new_registers) = 
+	let register_value = Hashtbl.find new_registers 0 in 
+	let value = ( 
+		match register_value with 
+			| `L_Str str -> register_value
+			| `L_Id id -> `L_Str (String.concat "ID '" [id; "'"] )
+			| `L_Int n -> `L_Str (string_of_int n) 
+			| _ -> failwith "invalid argument provided to to_s"	
+	) in
+	let start_location = Helpers.get_start_location instruction in  
+	Hashtbl.replace registers start_location value;
+	update_config (heap, stack) 1
+;; 
+
+(*
+	Runs built-in function to_i
+*)
+let run_to_i (heap, stack, instruction) (registers, new_registers) = 
+	let register_value = Hashtbl.find new_registers 0 in
+	let value = (
+		match register_value with 
+			| `L_Str str -> `L_Int (int_of_string str)
+			| `L_Int _ -> register_value
+			| _ -> failwith "invalid argument provided to to_i"
+	) in 
+	let start_location = Helpers.get_start_location instruction in  
+	Hashtbl.replace registers start_location value;
+	update_config (heap, stack) 1
+;;
+
+(*
+	Runs built-in function size
+*)
+let run_size (heap, stack, instruction) (registers, new_registers) = 
+	let register_val = Hashtbl.find new_registers 0 in
+	match register_val with 
+		| `L_Loc _ -> 
+			let table = Helpers.extract_table_from_reg (Hashtbl.find heap register_val) in 
+			let size = `L_Int (Hashtbl.length table) in 
+			let start_location = Helpers.get_start_location instruction in  
+			Hashtbl.replace registers start_location size;
+			update_config (heap, stack) 1
+	 	| _ ->
+	 		failwith "Invalid argument provided to size"
+;;
+
+(*
+	Runs built-in function length
+*)
+let run_length (heap, stack, instruction) (registers, new_registers) = 
+	let register_val = Hashtbl.find new_registers 0 in
+	match register_val with 
+		| `L_Str str -> 
+			let length = `L_Int (String.length str) in 
+			let start_location = Helpers.get_start_location instruction in  
+			Hashtbl.replace registers start_location length;
+			update_config (heap, stack) 1
+		| _ -> 
+			failwith "Invalid argument provided to length"
+;;
+
+(*
+	Runs built-in function concat
+*)
+let run_concat (heap, stack, instruction) (registers, new_registers) = 
+	let val1 = Hashtbl.find new_registers 0 in 
+	let val2 = Hashtbl.find new_registers 1 in
+	match (val1, val2) with
+		| (`L_Str str1, `L_Str str2) ->
+			let result = `L_Str (String.concat "" [str1; str2]) in  
+			let start_location = Helpers.get_start_location instruction in  
+			Hashtbl.replace registers start_location result;
+			update_config (heap, stack) 1
+		| _ -> 
+			failwith "invalid argument(s) provided to concat" 
+;;
+
+(*
+	Runs built-in function iter
+*)
+let run_iter (heap, stack, new_registers) = 
+ 	(* Get the pointer to the table *)
+ 	let pointer = Hashtbl.find new_registers 0 in 
+ 	(* Get the table *)
+ 	let table = Helpers.extract_table_from_reg (Hashtbl.find heap pointer) in 
+ 	(* Get the key,value pairs from the table *)
+ 	let key_vals = (Hashtbl.fold (fun k v lst -> (k, v)::lst) table []) in
+ 	(* Get the function to iterate with *)
+ 	let function_to_call = Helpers.extract_id_from_reg (Hashtbl.find new_registers 1) in 
+ 	(* Get the input to the function (other than a key,value pair) *)
+ 	let input = Hashtbl.find new_registers 2 in 
+ 	(* Add the function call to the stack for each key,value pair *)
+	let new_stack = Helpers.iterate_key_val_pairs key_vals function_to_call input stack in
+ 	(* Update the config *)
+ 	(heap, new_stack)
+;;
+
+
+(*
 	Runs call(reg, int, int)
 *)
 let run_call (heap, stack, registers, program, instruction) (r, start_register, end_register) = 
@@ -506,106 +552,34 @@ let run_call (heap, stack, registers, program, instruction) (r, start_register, 
 	else begin 
 		match function_to_call with 
 			| "print_string" -> 
-				let register_value = Hashtbl.find new_registers 0 in 
-				let string_to_print = Helpers.extract_string_from_reg register_value in 
-				print_string string_to_print;
-
-				let start_location = Helpers.get_start_location instruction in  
-				Hashtbl.replace registers start_location register_value;
-				update_config (heap, stack) 1
+				run_print_string (heap, stack, instruction) (registers, new_registers)
 
 			| "print_int" -> 
-				let register_value = Hashtbl.find new_registers 0 in 
-				let int_to_print = Helpers.extract_int_from_reg register_value in 
-				print_int int_to_print;
-
-				let start_location = Helpers.get_start_location instruction in  
-				Hashtbl.replace registers start_location register_value;
-				update_config (heap, stack) 1
+				run_print_int (heap, stack, instruction) (registers, new_registers)
 
 			| "to_s" -> 
-				let register_value = Hashtbl.find new_registers 0 in 
-				let value = ( 
-					match register_value with 
-						| `L_Str str -> register_value
-						| `L_Id id -> `L_Str (String.concat "ID '" [id; "'"] )
-						| `L_Int n -> `L_Str (string_of_int n) 
-						| _ -> failwith "invalid argument provided to to_s"	
-				) in
-				let start_location = Helpers.get_start_location instruction in  
-				Hashtbl.replace registers start_location value;
-				update_config (heap, stack) 1
+				run_to_s (heap, stack, instruction) (registers, new_registers)
  
 			| "to_i" -> 
-				let register_value = Hashtbl.find new_registers 0 in
-				let value = (
-					match register_value with 
-	 					| `L_Str str -> `L_Int (int_of_string str)
-	 					| `L_Int _ -> register_value
-	 					| _ -> failwith "invalid argument provided to to_i"
-				) in 
-				let start_location = Helpers.get_start_location instruction in  
-				Hashtbl.replace registers start_location value;
-				update_config (heap, stack) 1
+				run_to_i (heap, stack, instruction) (registers, new_registers)
 
 			| "concat" -> 
-				let val1 = Hashtbl.find new_registers 0 in 
-				let val2 = Hashtbl.find new_registers 1 in (
-					match (val1, val2) with
-						| (`L_Str str1, `L_Str str2) ->
-							let result = `L_Str (String.concat "" [str1; str2]) in  
-							let start_location = Helpers.get_start_location instruction in  
-							Hashtbl.replace registers start_location result;
-	 						update_config (heap, stack) 1
-	 					| _ -> 
-	 						failwith "invalid argument(s) provided to concat" 
-	 			)
+				run_concat (heap, stack, instruction) (registers, new_registers)
  				 
 	 		| "length" -> 
-	 			let register_val = Hashtbl.find new_registers 0 in (
-	 				match register_val with 
-						| `L_Str str -> 
-							let length = `L_Int (String.length str) in 
-							let start_location = Helpers.get_start_location instruction in  
-							Hashtbl.replace registers start_location length;
-							update_config (heap, stack) 1
-						| _ -> 
-							failwith "Invalid argument provided to length"
-	 			)
+	 			run_length (heap, stack, instruction) (registers, new_registers)
  				  
 	 		| "size" ->
-	 			let register_val = Hashtbl.find new_registers 0 in (
-	 				match register_val with 
-	 					| `L_Loc _ -> 
-	 						let table = Helpers.extract_table_from_reg (Hashtbl.find heap register_val) in 
-	 						let size = `L_Int (Hashtbl.length table) in 
-	 						let start_location = Helpers.get_start_location instruction in  
-							Hashtbl.replace registers start_location size;
-	 						update_config (heap, stack) 1
-	 				 	| _ ->
-	 				 		failwith "Invalid argument provided to size"
-	 			)	
+	 			run_size (heap, stack, instruction) (registers, new_registers)
 
  			| "iter" ->
- 				(* Get the pointer to the table *)
- 				let pointer = Hashtbl.find new_registers 0 in 
- 				(* Get the table *)
- 				let table = Helpers.extract_table_from_reg (Hashtbl.find heap pointer) in 
- 				(* Get the key,value pairs from the table *)
- 				let key_vals = (Hashtbl.fold (fun k v lst -> (k, v)::lst) table []) in
- 				(* Get the function to iterate with *)
- 				let function_to_call = Helpers.extract_id_from_reg (Hashtbl.find new_registers 1) in 
- 				(* Get the input to the function (other than a key,value pair) *)
- 				let input = Hashtbl.find new_registers 2 in 
- 				(* Add the function call to the stack for each key,value pair *)
-				let new_stack = iterate_key_val_pairs key_vals function_to_call input stack in
- 				(* Update the config *)
- 				(heap, new_stack)
+ 				run_iter (heap, stack, new_registers)
 
 			| _ -> 
 				failwith "Invalid function name provided" 
  		end
 ;;
+
 
 (*
 	Runs ret(reg)

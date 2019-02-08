@@ -90,6 +90,21 @@ let extract_stack_contents stack =
 ;;
 
 (*
+	Increments the program counter within the top frame of the stack by
+	the specified value.
+
+	@param (heap, stack) - The heap and stack
+	@param (int) increase_program_counter_by - The amount to increase the program counter by
+	@return (heap, stack) The heap and updated stack.
+*)
+let update_config (heap, stack) increase_program_counter_by = 
+	let (function_name, program_counter, registers, tail) = extract_stack_contents stack in 
+	let new_program_counter = program_counter + increase_program_counter_by in 
+	let new_stack = (function_name, new_program_counter, registers)::tail in 
+	(heap, new_stack)
+;;
+
+(*
 	Retrieves the current instruction of the given program
 	with the given config.
 
@@ -232,6 +247,69 @@ let rec copy_registers current_position start_register end_register registers ne
 ;;
 
 
+(*
+	Creates an iterations stack frame for the built-in iter method.
 
+	@param [value] key -  A key in the table from the iter call
+	@param [value] value - The value mapped to by the key
+	@param [string] function_to_call - The string from the `L_Id of the function to call
+	@param [value] input - The value passed to every iteration in iter.
+	@param [bool] is_first_call - Whether or not this is the first frame in the iter stack.
+	@return (string * int * regs) A stack frame for the call to iter.
+*)
+let iterate_key_val_pair key value function_to_call input is_first_call = 
+	(* Create a new set of registers *)
+	let new_registers = Hashtbl.create 32 in
+
+	(* 
+		Place the function_to_call, key, value, and input into the first 4 registers 
+		so that they can be accessed by :start_iter or :iter
+	*)
+	Hashtbl.replace new_registers 0 (`L_Id function_to_call); 
+	Hashtbl.replace new_registers 1 key; 
+	Hashtbl.replace new_registers 2 value;
+	Hashtbl.replace new_registers 3 input;
+
+	(* Determine the hidden function to call *)
+	let function_name = if is_first_call then ":start_iter" else ":iter" in
+	(* Create the stack frame *)
+	(function_name, 0, new_registers)
+;;
+
+(*
+	Creates the stack frames for each (key,value) pair in key_vals for the iter method, 
+	and adds them to the top of the stack.
+	Note: This function is called by iterate_key_val_pairs for the purpose of flipping
+	the (boolean) value fo is_first_call from true to false.
+
+	@param [(value * value) list] key_vals - The list of (key, value) paris
+	@param [string] function_to_call - The function to call for iter
+	@param [value] input - The input passed to all iter frames
+	@param [stack] stack - the stack
+	@param [bool] is_first_call - Whether or not this is the first frame for iter
+	@return [stack] The updated stack 
+*)
+let rec iterate_key_val_pairs_aux key_vals function_to_call input stack is_first_call = 
+	match key_vals with 
+		| [] -> stack
+		| (key, value)::tail -> 
+			let new_stack_frame = iterate_key_val_pair key value function_to_call input is_first_call in 
+			new_stack_frame::(iterate_key_val_pairs_aux tail function_to_call input stack false)
+;;
+
+(*
+	Creates the stack frames for each (key,value) pair in key_vals for the iter method, 
+	and adds them to the top of the stack. 
+
+	@param [(value * value) list] key_vals - The list of (key, value) paris
+	@param [string] function_to_call - The function to call for iter
+	@param [value] input - The input passed to all iter frames
+	@param [stack] stack - the stack
+	@return [stack] The updated stack
+*)
+let iterate_key_val_pairs key_vals function_to_call input stack = 
+	(* Delegate work to auxillary method, signal this is the first frame *)
+	iterate_key_val_pairs_aux key_vals function_to_call input stack true 
+;;
 
 
