@@ -34,15 +34,25 @@
 let id = ['A'-'Z' 'a'-'z' '_']['A'-'Z' 'a'-'z' '0'-'9' '_']*['?']?
 
 rule token = parse
-  [' ' '\t' '\r']		{ token lexbuf } (* skip whitespace *)
-| '#' [^ '\n']* '\n'		{ token lexbuf } (* skip #'d lines *)
-| '\n'				{ EOL }
-| '-'? ['0'-'9']+ as s		{ INT(int_of_string s) }
-| id ':' as s			{ FN(String.sub s 0 ((String.length s) - 1)) }
-| 'r' ['0'-'9']+ as r   	{ REG(int_of_string (Str.string_after r 1)) }
-| '"' [^'"' '\n']* '"' as s	{ STR(Scanf.unescaped(String.sub s 1 ((String.length s) - 2))) }
-| id as s			{ try Hashtbl.find keywords s with Not_found -> ID s }
-| ','				{ COMMA }
-| eof				{ EOF }
-| _ as lxm { Printf.printf "Illegal character %c" lxm; failwith "Bad input" }
+  | [' ' '\t' '\r']		{ token lexbuf } (* skip whitespace *)
+
+	| '#' [^ '\n']* '\n'		{ token lexbuf } (* skip #'d lines *)
+
+	| '\n'				{ EOL }
+
+	| '-'? ['0'-'9']+ as s		{ INT(int_of_string s) }
+
+	| id ':' as s			{ FN(String.sub s 0 ((String.length s) - 1)) }
+
+	| 'r' ['0'-'9']+ as r   	{ REG(int_of_string (Str.string_after r 1)) }
+
+	| '"' [^'"' '\n']* '"' as s	{ STR(Scanf.unescaped(String.sub s 1 ((String.length s) - 2))) }
+
+	| id as s			{ try Hashtbl.find keywords s with Not_found -> ID s }
+
+	| ','				{ COMMA }
+
+	| eof				{ EOF }
+	
+	| _ as lxm { Printf.printf "Illegal character %c" lxm; failwith "Bad input" }
 
