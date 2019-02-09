@@ -11,7 +11,7 @@ open Emeraldvm
     
     Next, parser.mly receives the tokenized input and converts 
     the tokens into the types defines in instr.ml. To achieve this,
-    parser.ml defines groupings of tokens (sometimes in a recursive manner)
+    parser.mly defines groupings of tokens (sometimes in a recursive manner)
     and the type they correspond to. These definitions are then used to
     automatically convert the tokenized input into the types from instr.ml.
 
