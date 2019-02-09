@@ -1,15 +1,6 @@
-def print_test_result(test_name, passed, message=nil)
-	if passed
-			puts "Pass -> #{test_name}"
-	else
-			puts "Fail -> #{test_name}\n#{message}"
-	end
-end
-
 def print_deliminater
 	puts "\n------------------------\n"
 end
-
 
 def print_test_results(passed, failed)
 	print_deliminater

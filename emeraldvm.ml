@@ -539,8 +539,18 @@ let run_iter (heap, stack, new_registers) =
 let run_call (heap, stack, registers, program, instruction) (r, start_register, end_register) = 
 	(* Copy over the specified registers into a new table *)
 	let new_registers = Helpers.copy_registers 0 start_register end_register registers (Hashtbl.create 32) in  
+		
+	let function_reg = (Helpers.get_register_value registers r) in 
+	
+	if not (Helpers.is_id function_reg) then 
+		failwith (
+			"Incorrect Argument Error (call): Expected an id, but found " ^ 
+			(Helpers.register_to_s function_reg)
+		)
+	;
+
 	(* Retrieve the function to call *)
-	let function_to_call = Helpers.extract_id_from_reg (Helpers.get_register_value registers r) in 
+	let function_to_call = Helpers.extract_id_from_reg function_reg in 
 		
 	(* If the function is stored in the program, call it *)
 	if Hashtbl.mem program function_to_call then (
