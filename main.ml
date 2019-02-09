@@ -5,11 +5,11 @@ open Emeraldvm
   The program requires an EmeraldByte program as input.
 
   Reading the EmeraldByte file:
-    First, lexer.ml defines the regular expressions that represent EmeraldByte's 'tokens'.
+    First, lexer.mll defines the regular expressions that represent EmeraldByte's 'tokens'.
     A token is just a single unit of the EmeraldByte syntax, such as JMP which 
     represent the invocation of the 'jmp' instruction.
     
-    Next, parser.ml receives the tokenized input and converts 
+    Next, parser.mly receives the tokenized input and converts 
     the tokens into the types defines in instr.ml. To achieve this,
     parser.ml defines groupings of tokens (sometimes in a recursive manner)
     and the type they correspond to. These definitions are then used to
