@@ -32,15 +32,15 @@ open Emeraldvm
     
     The heap is just a Hashtbl of (value -> value) types (value types represent the contents of registers). 
     The heap is used to store two things: 
-      1. global variables
-      2. tables defines within the EmeraldByte program (mk_tab instruction)
+      1. global variables (wr_glob instruction)
+      2. tables defined within the EmeraldByte program (mk_tab instruction)
 
     The virtual machine is quite simple. It determines the current instruction based
     off what's on the top of the stack, performs the work of that instruction (prints
     a string, creates an int, makes a new table, etc) - updating the heap and registers
     table as it needs, then updates the stack so that the next instruction can run 
     (most of the time, this means just incrementing the program counter by 1). The virtual
-    machine contains in this manner until is reaches the return instruction in main, reaches
+    machine continues in this manner until is reaches the return instruction in main, reaches
     a halt instruction, or hits a runtime failure (such as a bad table read).    
 *)
 
