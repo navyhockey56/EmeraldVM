@@ -10,10 +10,11 @@ open Emeraldvm
     represent the invocation of the 'jmp' instruction.
     
     Next, parser.mly receives the tokenized input and converts 
-    the tokens into the types defines in instr.ml. To achieve this,
-    parser.mly defines groupings of tokens (sometimes in a recursive manner)
-    and the type they correspond to. These definitions are then used to
-    automatically convert the tokenized input into the types from instr.ml.
+    the tokens into the types defines in instr.ml. As such, the grammer
+    of EmerbyteByte is defined within parser.mly. 
+    parser.mly defines groupings of tokens and the type they correspond to.
+    These definitions are then used to automatically convert the tokenized
+    input into the types from instr.ml. 
 
     The result of parsing the the program is a list of tuples, where each inner
     tuple contains the instructions of a single function defined within the program,

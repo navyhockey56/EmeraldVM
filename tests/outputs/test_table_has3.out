@@ -1,1 +1,1 @@
-Runtime Failure: Illegal call to has_tab - Expected to find a Pointer in the 2nd register, but found: Reg( Int = 1 )
+Runtime Failure: Illegal Argument (has_tab) - Expected to find a Pointer in the 2nd argument, but found Reg( Int = 1 )

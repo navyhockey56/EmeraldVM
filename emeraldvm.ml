@@ -1,5 +1,6 @@
 open Instr
 open Helpers
+open Errors 
 
 type prog_ret = [ `Reg of value | `Halt of value ]
 
@@ -21,17 +22,11 @@ let run_binary_operator (heap, stack) (r1, r2, r3) binary_op instr_name =
 
 	(* Check the the r1 is an int *)
 	if not (Helpers.is_int v1) then
-		failwith (
-			"Illegal call to " ^ instr_name ^ ". Excepted the 2nd register to contain an integer, " ^ 
-			"but found: " ^ (Helpers.register_to_s v1)
-		)
+		Errors.throw_illegal_argument instr_name "Integer" "2nd" v1
 	;
 	(* Check that r2 is an int *)
 	if not (Helpers.is_int v2) then
-		failwith (
-			"Illegal call to " ^ instr_name ^ ". Excepted 3rd register to contain an integer, " ^ 
-			"but found: " ^ (Helpers.register_to_s v2)
-		)
+		Errors.throw_illegal_argument instr_name "Integer" "3rd" v2
 	;
 
 	(* Extract the integers *)
@@ -247,11 +242,8 @@ let run_is_tab (heap, stack) (r1, r2) =
 *)
 let run_rd_glob (heap, stack, registers) (r, id) =
 	let id = (Helpers.convert_id_to_value id) in 
-	if not (Hashtbl.mem heap id) then 
-		failwith (
-			"Illegal call to rd_glob - The ID " ^ (Helpers.register_to_s id) ^
-			", is not bound within the heap"
-		)
+	if not (Hashtbl.mem heap id) then
+		Errors.throw_global_not_defined (Helpers.extract_id_from_reg id) 
 	;
 	let global_var = Hashtbl.find heap id in
 	Helpers.update_register registers r global_var;
@@ -295,17 +287,11 @@ let run_has_tab (heap, stack, registers) (r1, r2, r3) =
 	let pointer = Helpers.get_register_value registers r2 in 
 
 	if not (Helpers.is_loc pointer) then 
-		failwith (
-			"Illegal call to has_tab - Expected to find a Pointer in the 2nd register" ^ 
-			", but found: " ^ Helpers.register_to_s pointer
-		)
+		Errors.throw_illegal_argument "has_tab" "Pointer" "2nd" pointer 
 	;
 
 	if not (Hashtbl.mem heap pointer) then 
-		failwith (
-			"Illegal call to has_tab - The Pointer " ^ (Helpers.register_to_s pointer) ^
-			", is not bound within the heap"
-		)
+		Errors.throw_table_not_found "has_tab" pointer
 	;
 
 	(* Get the table off the heap *)
@@ -328,17 +314,11 @@ let run_wr_tab (heap, stack, registers) (r1, r2, r3) =
 	let pointer = Helpers.get_register_value registers r1 in
 
 	if not (Helpers.is_loc pointer) then 
-		failwith (
-			"Illegal call to wr_tab - Expected to find a Pointer in the 1st register" ^ 
-			", but found: " ^ Helpers.register_to_s pointer
-		)
+		Errors.throw_illegal_argument "wr_tab" "Pointer" "1st" pointer 
 	;
 
 	if not (Hashtbl.mem heap pointer) then 
-		failwith (
-			"Illegal call to wr_tab - The Pointer " ^ (Helpers.register_to_s pointer) ^
-			", is not bound within the heap"
-		)
+		Errors.throw_table_not_found "wr_tab" pointer
 	;
 
 	(* Get the table off the heap *)
@@ -361,18 +341,12 @@ let run_wr_tab (heap, stack, registers) (r1, r2, r3) =
 let run_rd_tab (heap, stack, registers) (r1, r2, r3) = 
 	let pointer = Helpers.get_register_value registers r2 in
 
-	if not (Helpers.is_loc pointer) then 
-		failwith (
-			"Illegal call to rd_tab - Expected to find a Pointer in the 2nd register" ^ 
-			", but found: " ^ Helpers.register_to_s pointer
-		)
+	if not (Helpers.is_loc pointer) then
+		Errors.throw_illegal_argument "rd_tab" "Pointer" "2nd" pointer 
 	;
 
-	if not (Hashtbl.mem heap pointer) then 
-		failwith (
-			"Illegal call to rd_tab - The Pointer " ^ (Helpers.register_to_s pointer) ^
-			", is not bound within the heap"
-		)
+	if not (Hashtbl.mem heap pointer) then
+		Errors.throw_table_not_found "rd_tab" pointer 
 	;
 		
 	(* Get the table off the heap *)
@@ -440,9 +414,9 @@ let run_to_s (heap, stack, instruction) (registers, new_registers) =
 	let value = ( 
 		match register_value with 
 			| `L_Str str -> register_value
-			| `L_Id id -> `L_Str (String.concat "ID '" [id; "'"] )
+			| `L_Id id -> `L_Str ("ID '" ^ id ^ "'")
 			| `L_Int n -> `L_Str (string_of_int n) 
-			| _ -> failwith "invalid argument provided to to_s"	
+			| _ -> Errors.throw_illegal_argument "call to_s" "(String, ID, or Integer)" "1st" register_value	
 	) in
 	let start_location = Helpers.get_start_location instruction in  
 	Hashtbl.replace registers start_location value;
@@ -454,12 +428,18 @@ let run_to_s (heap, stack, instruction) (registers, new_registers) =
 *)
 let run_to_i (heap, stack, instruction) (registers, new_registers) = 
 	let register_value = Hashtbl.find new_registers 0 in
-	let value = (
-		match register_value with 
-			| `L_Str str -> `L_Int (int_of_string str)
-			| `L_Int _ -> register_value
-			| _ -> failwith "invalid argument provided to to_i"
-	) in 
+	
+	let value = match register_value with 
+		| `L_Int _ -> register_value
+		| `L_Str str -> (
+			match (int_of_string_opt str) with 
+				| Some n -> `L_Int n 
+				| _ -> Errors.throw_illegal_argument "call to_i" "(String of an Integer)" "1st" register_value
+		)
+		| _ -> 
+			Errors.throw_illegal_argument "call to_i" "(String or Integer)" "1st" register_value
+	in
+
 	let start_location = Helpers.get_start_location instruction in  
 	Hashtbl.replace registers start_location value;
 	Helpers.update_config (heap, stack) 1
@@ -586,7 +566,10 @@ let run_call (heap, stack, registers, program, instruction) (r, start_register, 
  				run_iter (heap, stack, new_registers)
 
 			| _ -> 
-				failwith "Invalid function name provided" 
+				failwith (
+					"Function not Found Error: The function " ^ function_to_call ^
+					"is not defined within the program" 
+				)
  		end
 ;;
 

@@ -1,1 +1,1 @@
-Runtime Failure: Illegal call to sub. Excepted the 2nd register to contain an integer, but found: Reg ( String = foo )
+Runtime Failure: Illegal Argument (sub) - Expected to find a Integer in the 2nd argument, but found Reg( String = foo )

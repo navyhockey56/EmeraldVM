@@ -1,1 +1,1 @@
-Runtime Failure: Illegal call to leq. Excepted 3rd register to contain an integer, but found: Reg( Pointer = 1 )
+Runtime Failure: Illegal Argument (leq) - Expected to find a Integer in the 3rd argument, but found Reg( Pointer = 1 )
